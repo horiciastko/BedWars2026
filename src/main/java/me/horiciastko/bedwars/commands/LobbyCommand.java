@@ -53,9 +53,6 @@ public class LobbyCommand implements SubCommand {
         }
 
         player.teleport(lobbyLoc);
-        player.setFoodLevel(20);
-        player.setSaturation(20f);
-        player.setExhaustion(0f);
     }
 
     @Override

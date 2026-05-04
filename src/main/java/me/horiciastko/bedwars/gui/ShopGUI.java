@@ -166,8 +166,12 @@ public class ShopGUI extends BaseGUI {
 
     private ItemStack createShopItem(Player player, ConfigurationSection itemData, boolean inQuickBuy) {
         XMaterial xMat = XMaterial.matchXMaterial(itemData.getString("material", "BARRIER")).orElse(XMaterial.BARRIER);
-        Material displayMaterial = xMat.parseMaterial();
-        String name = resolveConfiguredName(player, itemData, "shop_name", "name", displayMaterial, null);
+        String name = itemData.getString("name");
+        if (name != null) {
+            name = ChatColor.translateAlternateColorCodes('&', name);
+        } else {
+            name = BedWars.getInstance().getLanguageManager().getItemName(player.getUniqueId(), xMat.parseMaterial());
+        }
         int amount = itemData.getInt("amount", 1);
         int cost = itemData.getInt("cost", 0);
         XMaterial xCurrency = XMaterial.matchXMaterial(itemData.getString("currency", "IRON_INGOT"))
@@ -177,8 +181,8 @@ public class ShopGUI extends BaseGUI {
             description = new java.util.ArrayList<>();
 
         if (itemData.contains("tiers")) {
-            boolean isPick = xMat.name().endsWith("_PICKAXE") || itemData.getString("tiers.1.material", "").endsWith("_PICKAXE");
-            boolean isAxe = xMat.name().endsWith("_AXE") || itemData.getString("tiers.1.material", "").endsWith("_AXE");
+            boolean isPick = xMat.name().endsWith("_PICKAXE");
+            boolean isAxe = xMat.name().endsWith("_AXE");
 
 
             int currentTier = 0;
@@ -199,8 +203,8 @@ public class ShopGUI extends BaseGUI {
                 description.add("§7You have reached the maximum tier.");
             } else {
                 xMat = XMaterial.matchXMaterial(tierData.getString("material", "BARRIER")).orElse(XMaterial.BARRIER);
-                name = resolveConfiguredName(player, tierData, "shop_name", "name", xMat.parseMaterial(), name)
-                        .replace("%tier%", String.valueOf(nextTier));
+                name = ChatColor.translateAlternateColorCodes('&', tierData.getString("name", name));
+                name = name.replace("%tier%", String.valueOf(nextTier));
 
                 cost = tierData.getInt("cost", cost);
                 xCurrency = XMaterial.matchXMaterial(tierData.getString("currency", "IRON_INGOT"))
@@ -236,8 +240,8 @@ public class ShopGUI extends BaseGUI {
                         xMat = isPick ? XMaterial.DIAMOND_PICKAXE : XMaterial.DIAMOND_AXE;
                         break;
                 }
-                    name = BedWars.getInstance().getLanguageManager().getItemName(player.getUniqueId(),
-                        xMat.parseMaterial());
+                name = (next == 1 ? "Wooden " : next == 2 ? "Stone " : next == 3 ? "Iron " : "Diamond ")
+                        + (isPick ? "Pickaxe" : "Axe");
 
                 if (next <= 2) {
                     cost = 10;
@@ -439,8 +443,7 @@ public class ShopGUI extends BaseGUI {
                 shopManager.updateQuickBuy(player, targetSlot, this.category, itemKey);
 
                 String itemName = ChatColor.translateAlternateColorCodes('&',
-                    resolveConfiguredName(player, itemData, "shop_name", "name", item.getType(),
-                        item.getType().name()));
+                        itemData.getString("name", item.getType().name()));
                 player.sendMessage(
                         BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(), "quick-buy-added")
                                 .replace("%item%", itemName).replace("%slot%", targetSlot.toString()));
@@ -452,13 +455,7 @@ public class ShopGUI extends BaseGUI {
             return;
         }
 
-        // Right-click = bulk buy (4× amount) for stackable non-tool items
-        if (clickType.isRightClick()) {
-            processPurchase(player, itemData, 4);
-            return;
-        }
-
-        processPurchase(player, itemData, 1);
+        processPurchase(player, itemData);
     }
 
     private Integer findFirstAvailableQuickBuySlot(Player player, ShopManager shopManager,
@@ -486,25 +483,21 @@ public class ShopGUI extends BaseGUI {
     }
 
     private void processPurchase(Player player, ConfigurationSection itemData) {
-        processPurchase(player, itemData, 1);
-    }
-
-    private void processPurchase(Player player, ConfigurationSection itemData, int quantityMultiplier) {
         XMaterial xCurrency = XMaterial.matchXMaterial(itemData.getString("currency", "IRON_INGOT"))
                 .orElse(XMaterial.IRON_INGOT);
         int cost = itemData.getInt("cost");
         int amount = itemData.getInt("amount", 1);
         XMaterial xMat = XMaterial.matchXMaterial(itemData.getString("material", "BARRIER")).orElse(XMaterial.BARRIER);
-        String inventoryName = resolveConfiguredName(player, itemData, "inventory_name", "name",
-                xMat.parseMaterial(), null);
-
-        // Track enchantments from YAML — overridden by tier-specific enchantments if applicable
-        ConfigurationSection activeEnchantSection = itemData.isConfigurationSection("enchantments")
-                ? itemData.getConfigurationSection("enchantments") : null;
+        String name = itemData.getString("name");
+        if (name != null) {
+            name = ChatColor.translateAlternateColorCodes('&', name);
+        } else {
+            name = BedWars.getInstance().getLanguageManager().getItemName(player.getUniqueId(), xMat.parseMaterial());
+        }
 
         if (itemData.contains("tiers")) {
-            boolean isPick = xMat.name().endsWith("_PICKAXE") || itemData.getString("tiers.1.material", "").endsWith("_PICKAXE");
-            boolean isAxe = xMat.name().endsWith("_AXE") || itemData.getString("tiers.1.material", "").endsWith("_AXE");
+            boolean isPick = xMat.name().endsWith("_PICKAXE");
+            boolean isAxe = xMat.name().endsWith("_AXE");
 
             int currentTier = 0;
             if (isPick) {
@@ -521,12 +514,7 @@ public class ShopGUI extends BaseGUI {
                 xCurrency = XMaterial.matchXMaterial(tierData.getString("currency", "IRON_INGOT"))
                         .orElse(XMaterial.IRON_INGOT);
                 xMat = XMaterial.matchXMaterial(tierData.getString("material", xMat.name())).orElse(xMat);
-                inventoryName = resolveConfiguredName(player, tierData, "inventory_name", "name",
-                        xMat.parseMaterial(), inventoryName);
-                // Carry enchantments from tier config into activeEnchantSection
-                if (tierData.isConfigurationSection("enchantments")) {
-                    activeEnchantSection = tierData.getConfigurationSection("enchantments");
-                }
+                name = ChatColor.translateAlternateColorCodes('&', tierData.getString("name", name));
             } else {
                 player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(), "shop-best-tool-already"));
                 return;
@@ -551,35 +539,7 @@ public class ShopGUI extends BaseGUI {
             }
         }
 
-        // Block duplicate armor purchase at same or better tier
-        if (xMat.name().endsWith("_BOOTS") && (xMat.name().contains("CHAIN")
-                || xMat.name().contains("IRON") || xMat.name().contains("DIAMOND"))) {
-            String rawTier = xMat.name().split("_")[0];
-            String buyingTier = rawTier.equalsIgnoreCase("CHAINMAIL") ? "CHAIN" : rawTier.toUpperCase();
-            String currentTier = BedWars.getInstance().getGameManager().getPlayerArmorTier(player.getUniqueId()).toUpperCase();
-            java.util.List<String> tierOrder = java.util.Arrays.asList("LEATHER", "CHAIN", "IRON", "DIAMOND");
-            if (tierOrder.indexOf(currentTier) >= tierOrder.indexOf(buyingTier)) {
-                player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(), "shop-armor-already-owned"));
-                BedWars.getInstance().getSoundManager().playSound(player, "shop-insufficient-money");
-                return;
-            }
-        }
-
         Material currencyMat = xCurrency.parseMaterial();
-
-        // Apply bulk multiplier for stackable items only (not swords, pickaxes, axes, armor, potions, special items)
-        boolean isBulkable = quantityMultiplier > 1
-                && !xMat.name().endsWith("_SWORD") && !xMat.name().endsWith("_PICKAXE")
-                && !xMat.name().endsWith("_AXE") && !xMat.name().endsWith("_BOOTS")
-                && !xMat.name().endsWith("_HELMET") && !xMat.name().endsWith("_CHESTPLATE")
-                && !xMat.name().endsWith("_LEGGINGS") && xMat != XMaterial.SHEARS
-                && xMat != XMaterial.BOW && xMat != XMaterial.POTION
-                && !itemData.contains("tiers");
-        if (isBulkable) {
-            cost = cost * quantityMultiplier;
-            amount = amount * quantityMultiplier;
-        }
-
         if (currencyMat != null && me.horiciastko.bedwars.utils.InventoryUtils.hasEnough(player, currencyMat, cost)) {
             ItemStack rawGiving = xMat.parseItem();
             if (rawGiving == null)
@@ -587,45 +547,8 @@ public class ShopGUI extends BaseGUI {
             final ItemStack giving = rawGiving;
             giving.setAmount(amount);
 
-            if (xMat == XMaterial.STICK && inventoryName.toLowerCase().contains("knockback")) {
+            if (xMat == XMaterial.STICK && name.toLowerCase().contains("knockback")) {
                 giving.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.KNOCKBACK, 1);
-            }
-
-            // Apply enchantments declared in YAML (works for bows, pickaxes displayed in shop, etc.)
-            if (activeEnchantSection != null) {
-                // Mapping from legacy enchantment names to 1.21 NamespacedKey names
-                java.util.Map<String, String> legacyEnchMap = new java.util.HashMap<>();
-                legacyEnchMap.put("DIG_SPEED", "efficiency");
-                legacyEnchMap.put("DAMAGE_ALL", "sharpness");
-                legacyEnchMap.put("DAMAGE_UNDEAD", "smite");
-                legacyEnchMap.put("DAMAGE_ARTHROPODS", "bane_of_arthropods");
-                legacyEnchMap.put("PROTECTION_ENVIRONMENTAL", "protection");
-                legacyEnchMap.put("PROTECTION_FIRE", "fire_protection");
-                legacyEnchMap.put("PROTECTION_FALL", "feather_falling");
-                legacyEnchMap.put("PROTECTION_EXPLOSIONS", "blast_protection");
-                legacyEnchMap.put("PROTECTION_PROJECTILE", "projectile_protection");
-                legacyEnchMap.put("ARROW_DAMAGE", "power");
-                legacyEnchMap.put("ARROW_KNOCKBACK", "punch");
-                legacyEnchMap.put("ARROW_FIRE", "flame");
-                legacyEnchMap.put("ARROW_INFINITE", "infinity");
-                legacyEnchMap.put("DURABILITY", "unbreaking");
-                for (String enchKey : activeEnchantSection.getKeys(false)) {
-                    int lvl = activeEnchantSection.getInt(enchKey, 1);
-                    org.bukkit.enchantments.Enchantment ench = null;
-                    // Try 1.21 Registry first
-                    String keyName = legacyEnchMap.getOrDefault(enchKey.toUpperCase(), enchKey.toLowerCase());
-                    try {
-                        ench = org.bukkit.enchantments.Enchantment
-                                .getByKey(org.bukkit.NamespacedKey.minecraft(keyName));
-                    } catch (Exception ignored) {}
-                    // Fallback to legacy getByName
-                    if (ench == null) {
-                        ench = org.bukkit.enchantments.Enchantment.getByName(enchKey);
-                    }
-                    if (ench != null) {
-                        giving.addUnsafeEnchantment(ench, lvl);
-                    }
-                }
             }
 
             Team team = BedWars.getInstance().getGameManager().getPlayerTeam(
@@ -650,36 +573,22 @@ public class ShopGUI extends BaseGUI {
             if (xMat == XMaterial.POTION) {
                 org.bukkit.inventory.meta.PotionMeta pm = (org.bukkit.inventory.meta.PotionMeta) giving.getItemMeta();
                 if (pm != null) {
-                    // Clear default base type so it doesn't conflict with custom effects
-                    try {
-                        pm.setBasePotionData(new org.bukkit.potion.PotionData(org.bukkit.potion.PotionType.WATER));
-                    } catch (Exception ignored) {}
-                    String checkName = inventoryName.toLowerCase() + " " + itemData.getName().toLowerCase();
-                    if (checkName.contains("speed")) {
-                        org.bukkit.potion.PotionEffectType speedType = org.bukkit.potion.PotionEffectType.getByName("SPEED");
-                        if (speedType != null)
-                            pm.addCustomEffect(new org.bukkit.potion.PotionEffect(speedType, 45 * 20, 1), true);
+                    if (name.toLowerCase().contains("speed")) {
+                        pm.addCustomEffect(new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.SPEED,
+                                45 * 20, 1), true);
                         pm.setColor(org.bukkit.Color.AQUA);
-                    } else if (checkName.contains("jump")) {
-                        // JUMP was renamed to JUMP_BOOST in 1.20.5+
-                        org.bukkit.potion.PotionEffectType jumpType = org.bukkit.potion.PotionEffectType.getByName("JUMP_BOOST");
-                        if (jumpType == null) jumpType = org.bukkit.potion.PotionEffectType.getByName("JUMP");
-                        if (jumpType != null)
-                            pm.addCustomEffect(new org.bukkit.potion.PotionEffect(jumpType, 45 * 20, 4), true);
+                    } else if (name.toLowerCase().contains("jump")) {
+                        pm.addCustomEffect(
+                                new org.bukkit.potion.PotionEffect(org.bukkit.potion.PotionEffectType.JUMP, 45 * 20, 4),
+                                true);
                         pm.setColor(org.bukkit.Color.GREEN);
-                    } else if (checkName.contains("invisibility") || checkName.contains("invis")) {
-                        org.bukkit.potion.PotionEffectType invType = org.bukkit.potion.PotionEffectType.getByName("INVISIBILITY");
-                        if (invType != null)
-                            pm.addCustomEffect(new org.bukkit.potion.PotionEffect(invType, 30 * 20, 0), true);
+                    } else if (name.toLowerCase().contains("invisibility")) {
+                        pm.addCustomEffect(new org.bukkit.potion.PotionEffect(
+                                org.bukkit.potion.PotionEffectType.INVISIBILITY, 30 * 20, 0), true);
                         pm.setColor(org.bukkit.Color.GRAY);
                     }
                     giving.setItemMeta(pm);
                 }
-            }
-
-            // Apply display name before canFit so isSimilar correctly matches already-held stacks
-            if (giving.getType() != Material.AIR) {
-                applyInventoryPresentation(giving, inventoryName);
             }
 
             boolean isSpecial = xMat.name().endsWith("_SWORD") || xMat.name().endsWith("_PICKAXE")
@@ -696,25 +605,24 @@ public class ShopGUI extends BaseGUI {
             me.horiciastko.bedwars.utils.InventoryUtils.removeItems(player, currencyMat, cost);
 
             if (giving.getType() != Material.AIR) {
-                if (itemData.getName().equals("tower")) {
-                    me.horiciastko.bedwars.utils.ItemTagUtils.setTag(giving, "special_item", "tower");
-                } else if (itemData.getName().equals("bridge_egg")) {
-                    me.horiciastko.bedwars.utils.ItemTagUtils.setTag(giving, "special_item", "bridge_egg");
-                } else if (itemData.getName().equals("tracker")) {
-                    me.horiciastko.bedwars.utils.ItemTagUtils.setTag(giving, "special_item", "tracker");
-                } else if (itemData.getName().equals("bedbug")) {
-                    me.horiciastko.bedwars.utils.ItemTagUtils.setTag(giving, "special_item", "bedbug");
-                } else if (itemData.getName().equals("dream_defender")) {
-                    me.horiciastko.bedwars.utils.ItemTagUtils.setTag(giving, "special_item", "dream_defender");
+                org.bukkit.inventory.meta.ItemMeta meta = giving.getItemMeta();
+                if (meta != null) {
+                    meta.setDisplayName(name);
+                    giving.setItemMeta(meta);
+                    if (itemData.getName().equals("tower")) {
+                        me.horiciastko.bedwars.utils.ItemTagUtils.setTag(giving, "special_item", "tower");
+                    } else if (itemData.getName().equals("bridge_egg")) {
+                        me.horiciastko.bedwars.utils.ItemTagUtils.setTag(giving, "special_item", "bridge_egg");
+                    } else if (itemData.getName().equals("tracker")) {
+                        me.horiciastko.bedwars.utils.ItemTagUtils.setTag(giving, "special_item", "tracker");
+                    }
                 }
             }
 
-            if (xMat == XMaterial.SHEARS) {
-                BedWars.getInstance().getGameManager().setPlayerHasShears(player.getUniqueId(), true);
-            }
-
             if (xMat.name().endsWith("_SWORD")) {
-                BedWars.getInstance().getGameManager().placePurchasedSword(player, team, giving);
+                removeSimilarItems(player, "_SWORD");
+                player.getInventory().addItem(giving);
+                BedWars.getInstance().getGameManager().giveStartingKit(player, team);
             } else if (xMat.name().endsWith("_PICKAXE")) {
                 int currentTier = BedWars.getInstance().getGameManager().getPlayerPickaxeTier(player.getUniqueId());
                 BedWars.getInstance().getGameManager().setPlayerPickaxeTier(player.getUniqueId(), currentTier + 1);
@@ -734,7 +642,7 @@ public class ShopGUI extends BaseGUI {
 
             String purchaseMsg = BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(),
                     "shop-purchased");
-                player.sendMessage(purchaseMsg.replace("%item%", inventoryName));
+            player.sendMessage(purchaseMsg.replace("%item%", name));
             BedWars.getInstance().getSoundManager().playSound(player, "shop-bought");
 
             new ShopGUI(this.category).open(player);
@@ -761,39 +669,12 @@ public class ShopGUI extends BaseGUI {
         }
     }
 
-    private String resolveConfiguredName(Player player, ConfigurationSection section, String preferredKey,
-            String fallbackKey, Material material, String fallbackName) {
-        String raw = section.getString(preferredKey);
-        if ((raw == null || raw.isEmpty()) && fallbackKey != null) {
-            raw = section.getString(fallbackKey);
-        }
-        if (raw != null && !raw.isEmpty()) {
-            return ChatColor.translateAlternateColorCodes('&', raw);
-        }
-        if (fallbackName != null && !fallbackName.isEmpty()) {
-            return fallbackName;
-        }
-        return BedWars.getInstance().getLanguageManager().getItemName(player.getUniqueId(), material);
-    }
-
-    private void applyInventoryPresentation(ItemStack item, String inventoryName) {
-        if (item == null || item.getType() == Material.AIR || inventoryName == null || inventoryName.isEmpty()) {
-            return;
-        }
-
-        // Stackable items (sponge, wool, arrows, etc.) must NOT get a custom display name.
-        // When the block is broken/dropped the vanilla item has no display name, so the two
-        // stacks would never merge. Only non-stackable items (swords, bows, potions…) get a name.
-        if (item.getType().getMaxStackSize() > 1) {
-            me.horiciastko.bedwars.utils.ItemTagUtils.removeTag(item, "inventory_name");
-            return;
-        }
-
-        org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(inventoryName);
-            item.setItemMeta(meta);
-            me.horiciastko.bedwars.utils.ItemTagUtils.setTag(item, "inventory_name", inventoryName);
+    private void removeSimilarItems(Player player, String suffix) {
+        for (int i = 0; i < player.getInventory().getSize(); i++) {
+            ItemStack invItem = player.getInventory().getItem(i);
+            if (invItem != null && invItem.getType().name().endsWith(suffix)) {
+                player.getInventory().setItem(i, null);
+            }
         }
     }
 }
