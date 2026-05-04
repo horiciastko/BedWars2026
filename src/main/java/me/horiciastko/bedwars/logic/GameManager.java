@@ -873,10 +873,48 @@ public class GameManager {
                 border.setDamageAmount(0.5);
                 border.setWarningDistance(5);
                 border.setWarningTime(5);
+                startSuddenDeathBorderDamageTask(arena, border);
             }
         }
 
         spawnSuddenDeathDragons(arena);
+    }
+
+    private void startSuddenDeathBorderDamageTask(Arena arena, org.bukkit.WorldBorder border) {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (arena.getState() != Arena.GameState.IN_GAME || arena.getWorldName() == null) {
+                    cancel();
+                    return;
+                }
+
+                org.bukkit.World world = org.bukkit.Bukkit.getWorld(arena.getWorldName());
+                if (world == null || !world.equals(border.getCenter().getWorld())) {
+                    cancel();
+                    return;
+                }
+
+                for (Player player : arena.getPlayers()) {
+                    if (player.getGameMode() != GameMode.SURVIVAL || !player.getWorld().equals(world) || player.isDead()) {
+                        continue;
+                    }
+
+                    double distanceOutside = getWorldBorderOverflow(player.getLocation(), border);
+                    if (distanceOutside > 0.0D) {
+                        player.damage(Math.max(0.5D, distanceOutside * border.getDamageAmount()));
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 20L, 20L);
+    }
+
+    private double getWorldBorderOverflow(Location location, org.bukkit.WorldBorder border) {
+        Location center = border.getCenter();
+        double halfSize = border.getSize() / 2.0D;
+        double overflowX = Math.max(0.0D, Math.abs(location.getX() - center.getX()) - halfSize);
+        double overflowZ = Math.max(0.0D, Math.abs(location.getZ() - center.getZ()) - halfSize);
+        return Math.max(overflowX, overflowZ);
     }
 
     private void spawnSuddenDeathDragons(Arena arena) {
@@ -962,22 +1000,18 @@ public class GameManager {
 
                 if (targetLocation != null) {
                     Location dragonLoc = dragon.getLocation();
+                    Location flightTarget = adjustDragonFlightTarget(targetLocation, dragonLoc, arena);
 
                     if (arena.getPos1() != null && arena.getPos2() != null) {
                         double minX = Math.min(arena.getPos1().getX(), arena.getPos2().getX());
                         double maxX = Math.max(arena.getPos1().getX(), arena.getPos2().getX());
-                        double minY = Math.min(arena.getPos1().getY(), arena.getPos2().getY());
-                        double maxY = Math.max(arena.getPos1().getY(), arena.getPos2().getY());
+                        double minY = Math.min(arena.getPos1().getY(), arena.getPos2().getY()) - 12;
+                        double maxY = Math.max(arena.getPos1().getY(), arena.getPos2().getY()) + 40;
                         double minZ = Math.min(arena.getPos1().getZ(), arena.getPos2().getZ());
                         double maxZ = Math.max(arena.getPos1().getZ(), arena.getPos2().getZ());
 
                         double cx = (minX + maxX) / 2.0;
                         double cz = (minZ + maxZ) / 2.0;
-
-                        // Clamp the target Y so the dragon stays inside the arena vertically
-                        double targetY = Math.max(minY + 8, Math.min(maxY - 4, targetLocation.getY() + 5));
-                        targetLocation = new Location(targetLocation.getWorld(),
-                                targetLocation.getX(), targetY, targetLocation.getZ());
 
                         org.bukkit.util.Vector correction = new org.bukkit.util.Vector(0, 0, 0);
 
@@ -991,7 +1025,7 @@ public class GameManager {
                         }
 
                         // Y boundary — push back strongly if outside arena height
-                        double clampedY = Math.max(minY + 8, Math.min(maxY - 4, dragonLoc.getY()));
+                        double clampedY = Math.max(minY + 8, Math.min(maxY - 6, dragonLoc.getY()));
                         double yDiff = clampedY - dragonLoc.getY();
                         if (Math.abs(yDiff) > 3) {
                             correction = correction.add(new org.bukkit.util.Vector(0, yDiff * 0.15, 0));
@@ -1010,9 +1044,9 @@ public class GameManager {
                         dragon.setPhase(org.bukkit.entity.EnderDragon.Phase.FLY_TO_PORTAL);
                     }
 
-                    double distance = dragonLoc.distance(targetLocation);
+                    double distance = dragonLoc.distance(flightTarget);
                     if (distance > 5) {
-                        org.bukkit.util.Vector toTarget = targetLocation.toVector().subtract(dragonLoc.toVector())
+                        org.bukkit.util.Vector toTarget = flightTarget.toVector().subtract(dragonLoc.toVector())
                                 .normalize().multiply(1.2);
                         dragon.setVelocity(dragon.getVelocity().add(toTarget));
                     }
@@ -1115,19 +1149,33 @@ public class GameManager {
 
                 if (targetLocation != null) {
                     Location dragonLoc = dragon.getLocation();
+                    Location flightTarget = adjustDragonFlightTarget(targetLocation, dragonLoc, arena);
 
                     if (arena.getPos1() != null && arena.getPos2() != null) {
                         double minX = Math.min(arena.getPos1().getX(), arena.getPos2().getX()) - 50;
                         double maxX = Math.max(arena.getPos1().getX(), arena.getPos2().getX()) + 50;
+                        double minY = Math.min(arena.getPos1().getY(), arena.getPos2().getY()) - 12;
+                        double maxY = Math.max(arena.getPos1().getY(), arena.getPos2().getY()) + 40;
                         double minZ = Math.min(arena.getPos1().getZ(), arena.getPos2().getZ()) - 50;
                         double maxZ = Math.max(arena.getPos1().getZ(), arena.getPos2().getZ()) + 50;
 
+                        org.bukkit.util.Vector correction = new org.bukkit.util.Vector(0, 0, 0);
+
                         if (dragonLoc.getX() < minX || dragonLoc.getX() > maxX ||
                                 dragonLoc.getZ() < minZ || dragonLoc.getZ() > maxZ) {
-                            org.bukkit.util.Vector toCenter = new Location(dragon.getWorld(),
+                            correction = correction.add(new Location(dragon.getWorld(),
                                     (minX + maxX) / 2, dragonLoc.getY(), (minZ + maxZ) / 2)
-                                    .toVector().subtract(dragonLoc.toVector()).normalize().multiply(1.5);
-                            dragon.setVelocity(dragon.getVelocity().add(toCenter));
+                                    .toVector().subtract(dragonLoc.toVector()).normalize().multiply(1.5));
+                        }
+
+                        double clampedY = Math.max(minY + 8, Math.min(maxY - 6, dragonLoc.getY()));
+                        double yDiff = clampedY - dragonLoc.getY();
+                        if (Math.abs(yDiff) > 3) {
+                            correction = correction.add(new org.bukkit.util.Vector(0, yDiff * 0.15, 0));
+                        }
+
+                        if (correction.lengthSquared() > 0) {
+                            dragon.setVelocity(dragon.getVelocity().add(correction));
                         }
                     }
 
@@ -1139,9 +1187,9 @@ public class GameManager {
                         dragon.setPhase(org.bukkit.entity.EnderDragon.Phase.FLY_TO_PORTAL);
                     }
 
-                    double distance = dragonLoc.distance(targetLocation);
+                    double distance = dragonLoc.distance(flightTarget);
                     if (distance > 5) {
-                        org.bukkit.util.Vector toTarget = targetLocation.toVector().subtract(dragonLoc.toVector())
+                        org.bukkit.util.Vector toTarget = flightTarget.toVector().subtract(dragonLoc.toVector())
                                 .normalize().multiply(1.2);
                         dragon.setVelocity(dragon.getVelocity().add(toTarget));
                     }
@@ -1166,6 +1214,23 @@ public class GameManager {
             }
         }
         return null;
+    }
+
+    private Location adjustDragonFlightTarget(Location rawTarget, Location dragonLocation, Arena arena) {
+        Location adjustedTarget = rawTarget.clone();
+
+        double minY = 32.0;
+        double maxY = dragonLocation.getWorld() != null ? dragonLocation.getWorld().getMaxHeight() - 16.0 : rawTarget.getY() + 32.0;
+        if (arena.getPos1() != null && arena.getPos2() != null) {
+            minY = Math.min(arena.getPos1().getY(), arena.getPos2().getY()) - 12.0;
+            maxY = Math.max(arena.getPos1().getY(), arena.getPos2().getY()) + 40.0;
+        }
+
+        double lowerY = minY + 8.0;
+        double upperY = Math.max(lowerY + 1.0, maxY - 6.0);
+        double preferredY = Math.max(rawTarget.getY() + 16.0, dragonLocation.getY() - 2.0);
+        adjustedTarget.setY(Math.max(lowerY, Math.min(upperY, preferredY)));
+        return adjustedTarget;
     }
 
     private Location findNearestEnemyPlayer(org.bukkit.entity.EnderDragon dragon, Arena arena, Team ownerTeam) {
