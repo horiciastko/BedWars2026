@@ -1,0 +1,41 @@
+# Konfiguracja Drużyn BedWars
+
+# Możesz dodać nowe drużyny lub zmienić istniejące.
+# Wewnętrzna Nazwa: Unikalny identyfikator w bazie danych (np. Red)
+# display_name: Nazwa wyświetlana graczom (np. Czerwoni)
+# color: Nazwa koloru Bukkit ChatColor (np. RED, BLUE, GOLD, itp.)
+# material: Materiał wełny (np. RED_WOOL, LIGHT_BLUE_WOOL)
+
+teams:
+  Red:
+    display_name: "CZERWONI"
+    color: RED
+    material: RED_WOOL
+  Blue:
+    display_name: "NIEBIESCY"
+    color: BLUE
+    material: BLUE_WOOL
+  Green:
+    display_name: "ZIELONI"
+    color: GREEN
+    material: LIME_WOOL
+  Yellow:
+    display_name: "ŻÓŁCI"
+    color: YELLOW
+    material: YELLOW_WOOL
+  Aqua:
+    display_name: "TURKUSOWI"
+    color: AQUA
+    material: CYAN_WOOL
+  White:
+    display_name: "BIALI"
+    color: WHITE
+    material: WHITE_WOOL
+  Pink:
+    display_name: "RÓŻOWI"
+    color: LIGHT_PURPLE
+    material: PINK_WOOL
+  Gray:
+    display_name: "SZARZY"
+    color: DARK_GRAY
+    material: GRAY_WOOL

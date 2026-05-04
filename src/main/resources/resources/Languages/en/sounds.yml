@@ -1,0 +1,36 @@
+game-end: ITEM_TRIDENT_THUNDER
+rejoin-denied: ENTITY_VILLAGER_NO
+rejoin-allowed: ENTITY_SLIME_JUMP
+spectate-denied: ENTITY_VILLAGER_NO
+spectate-allowed: ENTITY_SLIME_JUMP
+join-denied: ENTITY_VILLAGER_NO
+join-allowed: ENTITY_SLIME_JUMP
+spectator-gui-click: ENTITY_SLIME_JUMP
+game-countdown-others: BLOCK_NOTE_BLOCK_HAT
+game-countdown-s5: BLOCK_NOTE_BLOCK_PLING
+game-countdown-s4: BLOCK_NOTE_BLOCK_PLING
+game-countdown-s3: BLOCK_NOTE_BLOCK_PLING
+game-countdown-s2: BLOCK_NOTE_BLOCK_PLING
+game-countdown-s1: BLOCK_NOTE_BLOCK_PLING
+game-countdown-start: ENTITY_EXPERIENCE_ORB_PICKUP
+kill: ENTITY_ARROW_HIT_PLAYER
+bed-destroy: ENTITY_ENDER_DRAGON_GROWL
+bed-destroy-own: ENTITY_WITHER_SPAWN
+shop-insufficient-money: ENTITY_VILLAGER_NO
+shop-bought: ENTITY_VILLAGER_YES
+next-event:
+  beds-destroy: ENTITY_ENDER_DRAGON_GROWL
+  diamond-II: ENTITY_PLAYER_LEVELUP
+  diamond-III: ENTITY_PLAYER_LEVELUP
+  emerald-II: ENTITY_GHAST_WARN
+  emerald-III: ENTITY_GHAST_WARN
+  dragons-spawn: ENTITY_ENDER_DRAGON_FLAP
+player-re-spawn: BLOCK_SLIME_BLOCK_FALL
+arena-selector-open: ENTITY_CHICKEN_EGG
+stats-gui-open: ENTITY_CHICKEN_EGG
+trap-sound: ENTITY_ENDERMAN_TELEPORT
+shop-auto-equip: ITEM_ARMOR_EQUIP_GENERIC
+egg-bridge-block: ENTITY_CHICKEN_EGG
+ender-pearl-landed: ENTITY_ENDERMAN_TELEPORT
+tower-build: ENTITY_CHICKEN_EGG
+team-eliminated: ENTITY_LIGHTNING_BOLT_THUNDER

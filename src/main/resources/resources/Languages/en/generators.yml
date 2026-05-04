@@ -1,0 +1,200 @@
+############################################################
+#                                                          #
+#                 BedWars Generator Config                 #
+#                                                          #
+############################################################
+
+# --- Global Generator Settings (Diamond/Emerald) ---
+global_generators:
+  diamond:
+    name: "&b&lDIAMOND"
+    item: DIAMOND
+    block: DIAMOND_BLOCK
+  emerald:
+    name: "&2&lEMERALD"
+    item: EMERALD
+    block: EMERALD_BLOCK
+
+# --- Team Generator Settings (Iron/Gold) ---
+team_generators:
+  Default:
+    levels:
+      0:
+        iron: { item: IRON_INGOT, delay: 1.0, limit: 128 }
+        gold: { item: GOLD_INGOT, delay: 4.0, limit: 32 }
+      1:
+        iron: { item: IRON_INGOT, delay: 0.66, limit: 160 }
+        gold: { item: GOLD_INGOT, delay: 2.66, limit: 64 }
+      2:
+        iron: { item: IRON_INGOT, delay: 0.50, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 2.00, limit: 96 }
+      3:
+        iron: { item: IRON_INGOT, delay: 0.50, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 2.00, limit: 96 }
+        emerald: { item: EMERALD, delay: 10.0, limit: 4 }
+      4:
+        iron: { item: IRON_INGOT, delay: 0.33, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.33, limit: 96 }
+        emerald: { item: EMERALD, delay: 10.0, limit: 8 }
+
+  Solo:
+    levels:
+      0:
+        iron: { item: IRON_INGOT, delay: 1.0, limit: 128 }
+        gold: { item: GOLD_INGOT, delay: 4.0, limit: 32 }
+      1:
+        iron: { item: IRON_INGOT, delay: 0.66, limit: 160 }
+        gold: { item: GOLD_INGOT, delay: 2.66, limit: 64 }
+      2:
+        iron: { item: IRON_INGOT, delay: 0.50, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 2.00, limit: 96 }
+      3:
+        iron: { item: IRON_INGOT, delay: 0.50, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 2.00, limit: 96 }
+        emerald: { item: EMERALD, delay: 10.0, limit: 4 }
+      4:
+        iron: { item: IRON_INGOT, delay: 0.33, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.33, limit: 96 }
+        emerald: { item: EMERALD, delay: 10.0, limit: 8 }
+
+  Doubles: # x2 Speed
+    levels:
+      0:
+        iron: { item: IRON_INGOT, delay: 0.5, limit: 128 }
+        gold: { item: GOLD_INGOT, delay: 2.0, limit: 32 }
+      1:
+        iron: { item: IRON_INGOT, delay: 0.33, limit: 160 }
+        gold: { item: GOLD_INGOT, delay: 1.33, limit: 64 }
+      2:
+        iron: { item: IRON_INGOT, delay: 0.25, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.0, limit: 96 }
+      3:
+        iron: { item: IRON_INGOT, delay: 0.25, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.0, limit: 96 }
+        emerald: { item: EMERALD, delay: 5.0, limit: 4 }
+      4:
+        iron: { item: IRON_INGOT, delay: 0.16, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 0.66, limit: 96 }
+        emerald: { item: EMERALD, delay: 5.0, limit: 8 }
+
+  3v3v3v3: # x2 Speed
+    levels:
+      0:
+        iron: { item: IRON_INGOT, delay: 0.5, limit: 128 }
+        gold: { item: GOLD_INGOT, delay: 2.0, limit: 32 }
+      1:
+        iron: { item: IRON_INGOT, delay: 0.33, limit: 160 }
+        gold: { item: GOLD_INGOT, delay: 1.33, limit: 64 }
+      2:
+        iron: { item: IRON_INGOT, delay: 0.25, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.0, limit: 96 }
+      3:
+        iron: { item: IRON_INGOT, delay: 0.25, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.0, limit: 96 }
+        emerald: { item: EMERALD, delay: 5.0, limit: 4 }
+      4:
+        iron: { item: IRON_INGOT, delay: 0.16, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 0.66, limit: 96 }
+        emerald: { item: EMERALD, delay: 5.0, limit: 8 }
+
+  4v4v4v4: # x2 Speed
+    levels:
+      0:
+        iron: { item: IRON_INGOT, delay: 0.5, limit: 128 }
+        gold: { item: GOLD_INGOT, delay: 2.0, limit: 32 }
+      1:
+        iron: { item: IRON_INGOT, delay: 0.33, limit: 160 }
+        gold: { item: GOLD_INGOT, delay: 1.33, limit: 64 }
+      2:
+        iron: { item: IRON_INGOT, delay: 0.25, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.0, limit: 96 }
+      3:
+        iron: { item: IRON_INGOT, delay: 0.25, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.0, limit: 96 }
+        emerald: { item: EMERALD, delay: 5.0, limit: 4 }
+      4:
+        iron: { item: IRON_INGOT, delay: 0.16, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 0.66, limit: 96 }
+        emerald: { item: EMERALD, delay: 5.0, limit: 8 }
+
+# --- DEFAULT EVENTS TIMELINE ---
+# id must match GameManager switch cases.
+# name is used for scoreboard and language lookup (scoreboard-event-<lower_name_with_dashes>)
+events:
+  - id: "diamond_2"
+    name: "Diamond II"
+    duration: 360
+  - id: "emerald_2"
+    name: "Emerald II"
+    duration: 360
+  - id: "diamond_3"
+    name: "Diamond III"
+    duration: 360
+  - id: "emerald_3"
+    name: "Emerald III"
+    duration: 360
+  - id: "bed_gone"
+    name: "Beds Gone"
+    duration: 360
+  - id: "sudden_death"
+    name: "Sudden Death"
+    duration: 360
+  - id: "game_end"
+    name: "Game End"
+    duration: 360
+
+# --- Mode-Specific Settings (Global Generators Only) ---
+# Defines spawn delays (in seconds) and item limits for Diamond and Emerald generators.
+# These limits apply to the 'Global' generators found in the map (Diamond/Emerald).
+# Team generator settings are defined in 'team_generators' above.
+
+Default:
+  # iron-limit and gold-limit are removed as they are now defined per-level in 'team_generators'
+  diamond:
+    tierI: { delay: 30, spawn-limit: 4 }
+    tierII: { delay: 15, spawn-limit: 6 }
+    tierIII: { delay: 10, spawn-limit: 8 }
+  emerald:
+    tierI: { delay: 60, spawn-limit: 2 }
+    tierII: { delay: 45, spawn-limit: 4 }
+    tierIII: { delay: 30, spawn-limit: 6 }
+
+Solo:
+  diamond:
+    tierI: { delay: 30, spawn-limit: 4 }
+    tierII: { delay: 15, spawn-limit: 6 }
+    tierIII: { delay: 10, spawn-limit: 8 }
+  emerald:
+    tierI: { delay: 60, spawn-limit: 2 }
+    tierII: { delay: 45, spawn-limit: 3 }
+    tierIII: { delay: 30, spawn-limit: 4 }
+
+Doubles:
+  diamond:
+    tierI: { delay: 30, spawn-limit: 4 }
+    tierII: { delay: 15, spawn-limit: 6 }
+    tierIII: { delay: 10, spawn-limit: 8 }
+  emerald:
+    tierI: { delay: 60, spawn-limit: 2 }
+    tierII: { delay: 45, spawn-limit: 3 }
+    tierIII: { delay: 30, spawn-limit: 4 }
+
+3v3v3v3:
+  diamond:
+    tierI: { delay: 30, spawn-limit: 5 }
+    tierII: { delay: 15, spawn-limit: 7 }
+    tierIII: { delay: 10, spawn-limit: 9 }
+  emerald:
+    tierI: { delay: 60, spawn-limit: 2 }
+    tierII: { delay: 45, spawn-limit: 3 }
+    tierIII: { delay: 30, spawn-limit: 4 }
+
+4v4v4v4:
+  diamond:
+    tierI: { delay: 30, spawn-limit: 6 }
+    tierII: { delay: 15, spawn-limit: 8 }
+    tierIII: { delay: 10, spawn-limit: 10 }
+  emerald:
+    tierI: { delay: 60, spawn-limit: 2 }
+    tierII: { delay: 45, spawn-limit: 3 }
+    tierIII: { delay: 30, spawn-limit: 4 }
