@@ -133,13 +133,17 @@ public class BedWars extends JavaPlugin {
         if (supportManager.isCitizensEnabled()) {
             try {
                 getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.CitizensNPCListener(this), this);
-                logger.info("[BedWars] Citizens NPC listener registered successfully!");
+                logger.info("Citizens NPC listener registered successfully!");
             } catch (NoClassDefFoundError e) {
-                logger.warning("[BedWars] Citizens detected but listener registration failed: " + e.getMessage());
+                logger.warning("Citizens detected but listener registration failed: " + e.getMessage());
             }
         }
 
         logger.info("Plugin enabled successfully! Version: " + getDescription().getVersion());
+
+        me.horiciastko.bedwars.utils.UpdateChecker updateChecker = new me.horiciastko.bedwars.utils.UpdateChecker(this);
+        getServer().getPluginManager().registerEvents(updateChecker, this);
+        updateChecker.check();
     }
 
     @Override
