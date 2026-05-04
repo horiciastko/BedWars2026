@@ -1434,6 +1434,32 @@ public class GameManager {
         applyTeamUpgrades(player, team);
     }
 
+    public void ensureWoodenSwordInSlot(Player player, Team team, int preferredSlot) {
+        if (player == null || hasAnySword(player)) {
+            return;
+        }
+
+        ItemStack sword = com.cryptomorin.xseries.XMaterial.WOODEN_SWORD.parseItem();
+        if (sword == null) {
+            sword = new ItemStack(Material.WOODEN_SWORD);
+        }
+
+        setUnbreakable(sword);
+        renameItem(player, sword);
+
+        if (preferredSlot >= 0 && preferredSlot < player.getInventory().getSize()) {
+            ItemStack current = player.getInventory().getItem(preferredSlot);
+            if (current == null || current.getType() == Material.AIR) {
+                player.getInventory().setItem(preferredSlot, sword);
+                applyTeamUpgrades(player, team);
+                return;
+            }
+        }
+
+        player.getInventory().addItem(sword);
+        applyTeamUpgrades(player, team);
+    }
+
     public void giveStartingKit(Player player, Team team) {
         if (team == null)
             return;

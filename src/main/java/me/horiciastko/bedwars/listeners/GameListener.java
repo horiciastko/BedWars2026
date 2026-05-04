@@ -490,12 +490,29 @@ public class GameListener implements Listener {
 
         Material type = event.getItemDrop().getItemStack().getType();
         String name = type.name();
+        int heldSlot = player.getInventory().getHeldItemSlot();
 
         if (type == Material.WOODEN_SWORD || name.endsWith("_HELMET") || name.endsWith("_CHESTPLATE")
                 || name.endsWith("_LEGGINGS") || name.endsWith("_BOOTS")
                 || name.endsWith("_PICKAXE") || name.endsWith("_AXE") || type == Material.SHEARS
                 || name.contains("BED")) {
             event.setCancelled(true);
+            return;
+        }
+
+        if (isBetterSword(event.getItemDrop().getItemStack())) {
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    Arena currentArena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+                    if (currentArena == null || currentArena.getState() != Arena.GameState.IN_GAME) {
+                        return;
+                    }
+
+                    Team team = BedWars.getInstance().getGameManager().getPlayerTeam(currentArena, player);
+                    BedWars.getInstance().getGameManager().ensureWoodenSwordInSlot(player, team, heldSlot);
+                }
+            }.runTask(BedWars.getInstance());
         }
     }
 
@@ -517,6 +534,7 @@ public class GameListener implements Listener {
                         }
 
                         Team team = BedWars.getInstance().getGameManager().getPlayerTeam(currentArena, player);
+                        moveBetterSwordToWoodenSlot(player);
                         BedWars.getInstance().getGameManager().normalizeSwordInventory(player, team);
                     }
                 }.runTask(BedWars.getInstance());
@@ -700,6 +718,35 @@ public class GameListener implements Listener {
                 BedWars.getInstance().getGameManager().normalizeSwordInventory(player, team);
             }
         }.runTask(BedWars.getInstance());
+    }
+
+    private void moveBetterSwordToWoodenSlot(Player player) {
+        int woodenSlot = findFirstSwordSlot(player, true);
+        int betterSwordSlot = findFirstSwordSlot(player, false);
+        if (woodenSlot < 0 || betterSwordSlot < 0 || woodenSlot == betterSwordSlot) {
+            return;
+        }
+
+        ItemStack betterSword = player.getInventory().getItem(betterSwordSlot);
+        if (betterSword == null || !isBetterSword(betterSword)) {
+            return;
+        }
+
+        player.getInventory().setItem(woodenSlot, betterSword);
+        player.getInventory().setItem(betterSwordSlot, null);
+    }
+
+    private int findFirstSwordSlot(Player player, boolean woodenOnly) {
+        for (int i = 0; i < player.getInventory().getSize(); i++) {
+            ItemStack item = player.getInventory().getItem(i);
+            if (woodenOnly && isWoodenSword(item)) {
+                return i;
+            }
+            if (!woodenOnly && isBetterSword(item)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     @EventHandler
