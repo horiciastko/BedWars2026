@@ -9,13 +9,18 @@ import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class UpdateChecker implements Listener {
 
     private static final int SPIGOT_RESOURCE_ID = 132654;
     private static final String SPIGOT_DOWNLOAD_URL = "https://www.spigotmc.org/resources/" + SPIGOT_RESOURCE_ID + "/";
+    private static final String UPDATE_API_URL = "https://api.spiget.org/v2/resources/" + SPIGOT_RESOURCE_ID + "/updates/latest";
+    private static final Pattern TITLE_PATTERN = Pattern.compile("\"title\"\\s*:\\s*\"((?:\\\\.|[^\"])*)\"");
 
     private final BedWars plugin;
     private String latestVersion = null;
@@ -33,29 +38,35 @@ public class UpdateChecker implements Listener {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             HttpURLConnection conn = null;
             try {
-                URL url = new URL("https://api.spigotmc.org/legacy/update.php?resource=" + SPIGOT_RESOURCE_ID);
+                URL url = new URL(UPDATE_API_URL);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(5000);
                 conn.setReadTimeout(5000);
                 conn.setRequestProperty("User-Agent", "BedWars-UpdateChecker");
+                conn.setRequestProperty("Accept", "application/json");
                 conn.connect();
 
                 int responseCode = conn.getResponseCode();
                 if (responseCode != 200) {
                     final int code = responseCode;
                     Bukkit.getScheduler().runTask(plugin, () ->
-                            plugin.getLogger().warning("Update check failed: Spigot API returned HTTP " + code));
+                            plugin.getLogger().warning("Update check failed: Spiget API returned HTTP " + code));
                     return;
                 }
 
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()))) {
-                    String line = reader.readLine();
-                    if (line == null || line.trim().isEmpty()) {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+
+                    latestVersion = extractLatestVersion(response.toString());
+                    if (latestVersion == null || latestVersion.trim().isEmpty()) {
                         Bukkit.getScheduler().runTask(plugin, () ->
-                                plugin.getLogger().warning("Update check failed: empty response from Spigot API."));
+                                plugin.getLogger().warning("Update check failed: Spiget API response did not contain a title."));
                         return;
                     }
-                    latestVersion = line.trim();
                 }
 
                 String currentVersion = plugin.getDescription().getVersion().trim();
@@ -83,7 +94,7 @@ public class UpdateChecker implements Listener {
                 }
             } catch (java.net.SocketTimeoutException e) {
                 Bukkit.getScheduler().runTask(plugin, () ->
-                        plugin.getLogger().warning("Update check failed: connection to Spigot API timed out."));
+                        plugin.getLogger().warning("Update check failed: connection to Spiget API timed out."));
             } catch (java.net.UnknownHostException e) {
                 Bukkit.getScheduler().runTask(plugin, () ->
                         plugin.getLogger().warning("Update check failed: no internet connection or DNS failure."));
@@ -96,6 +107,23 @@ public class UpdateChecker implements Listener {
                 }
             }
         });
+    }
+
+    private String extractLatestVersion(String responseBody) {
+        if (responseBody == null || responseBody.trim().isEmpty()) {
+            return null;
+        }
+
+        Matcher matcher = TITLE_PATTERN.matcher(responseBody);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        return matcher.group(1)
+                .replace("\\/", "/")
+                .replace("\\\"", "\"")
+                .replace("\\n", "\n")
+                .trim();
     }
 
     private boolean isNewer(String remote, String current) {
