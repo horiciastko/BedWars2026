@@ -19,14 +19,7 @@ public class CitizensNPCListener implements Listener {
         net.citizensnpcs.api.npc.NPC npc = event.getNPC();
         Player player = event.getClicker();
 
-        String bedwarsType = null;
-        for (net.citizensnpcs.api.trait.Trait trait : npc.getTraits()) {
-            String traitName = trait.getName();
-            if (traitName != null && traitName.startsWith("bw_")) {
-                bedwarsType = traitName.substring(3);
-                break;
-            }
-        }
+        String bedwarsType = resolveBedWarsType(npc);
 
         if (bedwarsType != null) {
             event.setCancelled(true);
@@ -48,14 +41,7 @@ public class CitizensNPCListener implements Listener {
         net.citizensnpcs.api.npc.NPC npc = event.getNPC();
         Player player = event.getClicker();
 
-        String bedwarsType = null;
-        for (net.citizensnpcs.api.trait.Trait trait : npc.getTraits()) {
-            String traitName = trait.getName();
-            if (traitName != null && traitName.startsWith("bw_")) {
-                bedwarsType = traitName.substring(3);
-                break;
-            }
-        }
+        String bedwarsType = resolveBedWarsType(npc);
 
         if (bedwarsType != null) {
             event.setCancelled(true);
@@ -76,63 +62,68 @@ public class CitizensNPCListener implements Listener {
     @EventHandler
     public void onNPCSpawn(net.citizensnpcs.api.event.NPCSpawnEvent event) {
         net.citizensnpcs.api.npc.NPC npc = event.getNPC();
-        
-        boolean isBedWarsNPC = false;
-        for (net.citizensnpcs.api.trait.Trait trait : npc.getTraits()) {
-            String traitName = trait.getName();
-            if (traitName != null && traitName.startsWith("bw_")) {
-                isBedWarsNPC = true;
-                break;
-            }
-        }
-        
-        if (!isBedWarsNPC) {
+
+        String type = resolveBedWarsType(npc);
+        if (type == null) {
             return;
         }
 
-        // Re-spawn the custom ArmorStand hologram for CitizensNPCImpl instances.
-        // Citizens re-spawns NPCs (chunk reload, server restart, etc.) and fires this event,
-        // but the hologram is not automatically recreated — we must do it here.
         me.horiciastko.bedwars.npc.CitizensNPCImpl impl =
                 plugin.getNpcManager().getCitizensImpl(npc.getId());
+        if (impl == null) {
+            impl = new me.horiciastko.bedwars.npc.CitizensNPCImpl(plugin, type);
+            impl.attachToExistingNPC(npc);
+            plugin.getNpcManager().registerCitizensImpl(npc.getId(), impl);
+        }
+
+        final me.horiciastko.bedwars.npc.CitizensNPCImpl finalImpl = impl;
         if (impl != null) {
             final net.citizensnpcs.api.npc.NPC finalNpc = npc;
             if (finalNpc.getEntity() != null) {
-                plugin.getNpcManager().registerEntity(finalNpc.getEntity().getUniqueId(), impl);
+                try {
+                    finalNpc.getEntity().addScoreboardTag("bw_npc");
+                    finalNpc.getEntity().addScoreboardTag("bw_npc_type_" + type);
+                } catch (NoSuchMethodError | Exception ignored) {
+                }
+                plugin.getNpcManager().registerEntity(finalNpc.getEntity().getUniqueId(), finalImpl);
             }
             new org.bukkit.scheduler.BukkitRunnable() {
                 @Override
                 public void run() {
                     if (finalNpc.isSpawned() && finalNpc.getEntity() != null) {
-                        plugin.getNpcManager().registerEntity(finalNpc.getEntity().getUniqueId(), impl);
-                        impl.respawnHologram(finalNpc.getEntity());
+                        try {
+                            finalNpc.getEntity().addScoreboardTag("bw_npc");
+                            finalNpc.getEntity().addScoreboardTag("bw_npc_type_" + type);
+                        } catch (NoSuchMethodError | Exception ignored) {
+                        }
+                        plugin.getNpcManager().registerEntity(finalNpc.getEntity().getUniqueId(), finalImpl);
+                        finalImpl.respawnHologram(finalNpc.getEntity());
                     }
                 }
             }.runTaskLater(plugin, 2L);
             return;
         }
+    }
 
-        if (npc.hasTrait(net.citizensnpcs.trait.HologramTrait.class)) {
-            net.citizensnpcs.trait.HologramTrait holo = npc.getOrAddTrait(net.citizensnpcs.trait.HologramTrait.class);
-            holo.clear();
-            
-            String type = null;
-            for (net.citizensnpcs.api.trait.Trait trait : npc.getTraits()) {
-                String traitName = trait.getName();
-                if (traitName != null && traitName.startsWith("bw_")) {
-                    type = traitName.substring(3);
-                    break;
-                }
-            }
-            
-            if (type != null) {
-                java.util.List<String> descriptionLines = plugin.getNpcManager().getConfig()
-                        .getStringList("types." + type + ".description");
-                for (String line : descriptionLines) {
-                    holo.addLine(line);
-                }
+    private String resolveBedWarsType(net.citizensnpcs.api.npc.NPC npc) {
+        if (npc == null) {
+            return null;
+        }
+
+        Object rawType = npc.data().get("bw_npc_type");
+        String type = rawType instanceof String ? (String) rawType : null;
+        if (type != null && !type.trim().isEmpty()) {
+            return type;
+        }
+
+        for (net.citizensnpcs.api.trait.Trait trait : npc.getTraits()) {
+            String traitName = trait.getName();
+            if (traitName != null && traitName.startsWith("bw_")) {
+                return traitName.substring(3);
             }
         }
+
+        return null;
     }
 
     private void handleNpcClick(Player player, String type) {

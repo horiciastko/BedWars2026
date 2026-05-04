@@ -197,6 +197,11 @@ public class CitizensNPCImpl implements BedWarsNPC {
         return citizensNpcId;
     }
 
+    public void attachToExistingNPC(NPC existingNpc) {
+        this.npc = existingNpc;
+        this.citizensNpcId = existingNpc != null ? existingNpc.getId() : -1;
+    }
+
     @Override
     public void remove() {
         if (citizensNpcId >= 0) {
