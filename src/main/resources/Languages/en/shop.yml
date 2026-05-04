@@ -4,6 +4,10 @@
 #                                                          #
 ############################################################
 
+# Optional item fields:
+# shop_name: name shown in the shop GUI
+# inventory_name: name shown on the item in inventory
+
 shop-title: "&8Item Shop"
 
 categories:
@@ -73,6 +77,16 @@ sections:
         lore:
           - "&7Stronger protection that lasts"
           - "&7until the end of the game."
+      gapple:
+        material: GOLDEN_APPLE
+        name: "&eGolden Apple"
+        amount: 1
+        cost: 3
+        currency: GOLD_INGOT
+        slot: 22
+        lore:
+          - "&7Quick regeneration and"
+          - "&7emergency healing in fights."
       bow:
         material: BOW
         name: "&fStandard Bow"
@@ -422,6 +436,8 @@ sections:
         cost: 24
         currency: GOLD_INGOT
         slot: 21
+        enchantments:
+          ARROW_DAMAGE: 1
       punch_bow:
         material: BOW
         name: "&5Punch Bow (Power I, Punch I)"
@@ -429,26 +445,32 @@ sections:
         cost: 6
         currency: EMERALD
         slot: 22
+        enchantments:
+          ARROW_DAMAGE: 1
+          ARROW_KNOCKBACK: 1
 
   potions:
     items:
       speed:
         material: POTION
-        name: "&fSpeed II (45s)"
+        shop_name: "&fSpeed II (45s)"
+        inventory_name: "&fSpeed II Potion"
         amount: 1
         cost: 1
         currency: EMERALD
         slot: 19
       jump:
         material: POTION
-        name: "&fJump Boost V (45s)"
+        shop_name: "&fJump Boost V (45s)"
+        inventory_name: "&fJump Boost V Potion"
         amount: 1
         cost: 1
         currency: EMERALD
         slot: 20
       invisibility:
         material: POTION
-        name: "&fInvisibility (30s)"
+        shop_name: "&fInvisibility (30s)"
+        inventory_name: "&fInvisibility Potion"
         amount: 1
         cost: 2
         currency: EMERALD
@@ -524,7 +546,8 @@ sections:
         slot: 29
       sponge:
         material: SPONGE
-        name: "&eSponge (x4)"
+        shop_name: "&eSponge (x4)"
+        inventory_name: "&eSponge"
         amount: 4
         cost: 3
         currency: GOLD_INGOT
@@ -536,13 +559,4 @@ sections:
         cost: 24
         currency: IRON_INGOT
         slot: 31
-      ender_dragon:
-        material: DRAGON_EGG
-        name: "&5Ender Dragon"
-        amount: 1
-        cost: 4
-        currency: EMERALD
-        slot: 32
-        lore:
-          - "&7Spawns an Ender Dragon that"
-          - "&7attacks enemy teams and their beds!"
+

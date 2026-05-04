@@ -85,6 +85,9 @@ game-win-title: "&a&lVICTORY!"
 game-win-subtitle: "&fYou were the last one standing!"
 game-over-title: "&c&lGAME OVER!"
 game-over-subtitle: "&f%winner% &7won the game!"
+game-draw-title: "&e&lDRAW!"
+game-draw-subtitle: "&7The game ended with no winner!"
+game-victory-draw: "   &eResult: &7&lDRAW"
 
 # --- Scoreboard Status ---
 scoreboard-status-waiting: "Waiting..."
@@ -507,6 +510,8 @@ shop-manual-set-upgrade: "&b[BedWars] Set UPGRADE for team %color%%team%"
 # --- Shop Errors ---
 shop-quick-buy-full: "&cQuick Buy is full! Remove an item first."
 shop-best-tool-already: "&cYou already have the best tool!"
+shop-armor-already-owned: "&cYou already own this armor tier or better!"
+shop-item-already-owned: "&cYou already own this item!"
 
 # --- Setup GUI ---
 setup-lobby-set: "&aWaiting lobby set!"

@@ -8,34 +8,34 @@
 
 teams:
   Red:
-    display_name: "CZERWONI"
+    display_name: "Czerwonych"
     color: RED
     material: RED_WOOL
   Blue:
-    display_name: "NIEBIESCY"
+    display_name: "Niebieskich"
     color: BLUE
     material: BLUE_WOOL
   Green:
-    display_name: "ZIELONI"
+    display_name: "Zielonych"
     color: GREEN
     material: LIME_WOOL
   Yellow:
-    display_name: "ŻÓŁCI"
+    display_name: "Żółtych"
     color: YELLOW
     material: YELLOW_WOOL
   Aqua:
-    display_name: "TURKUSOWI"
+    display_name: "Turkusowych"
     color: AQUA
     material: CYAN_WOOL
   White:
-    display_name: "BIALI"
+    display_name: "Białych"
     color: WHITE
     material: WHITE_WOOL
   Pink:
-    display_name: "RÓŻOWI"
+    display_name: "Różowych"
     color: LIGHT_PURPLE
     material: PINK_WOOL
   Gray:
-    display_name: "SZARZY"
+    display_name: "Szarych"
     color: DARK_GRAY
     material: GRAY_WOOL

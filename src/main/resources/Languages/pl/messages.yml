@@ -85,6 +85,9 @@ game-win-title: "&a&lZWYCIĘSTWO!"
 game-win-subtitle: "&fByłeś ostatni na placu boju!"
 game-over-title: "&c&lKONIEC GRY!"
 game-over-subtitle: "&f%winner% &7wygrał grę!"
+game-draw-title: "&e&lREMIS!"
+game-draw-subtitle: "&7Gra zakończyła się bez zwycięzcy!"
+game-victory-draw: "   &eWynik: &7&lREMIS"
 
 # --- Statusy Scoreboardu ---
 scoreboard-status-waiting: "Oczekiwanie..."
@@ -187,9 +190,9 @@ hologram-bed-status-alive: "&a&l✔"
 hologram-bed-status-destroyed: "&c&l✘"
 
 # --- Układ Hologramów ---
-hologram-team-line1: "%status% %teamColor%&l%team% Łóżko"
+hologram-team-line1: "%status% %teamColor%&lŁóżko %team%"
 hologram-team-line2: "%subtitle%"
-hologram-eliminated-line1: "&c&l%team% Drużyna Wyeliminowana"
+hologram-eliminated-line1: "&c&lŁóżko %team% Zniszczone"
 
 # --- GUI Join ---
 join-gui-title: "&8BedWars Dołącz"
@@ -508,6 +511,8 @@ shop-manual-set-upgrade: "&b[BedWars] Ustawiono ULEPSZENIA dla drużyny %color%%
 # --- Błędy Sklepu ---
 shop-quick-buy-full: "&cSzybki zakup jest pełny! Usuń najpierw jakiś przedmiot."
 shop-best-tool-already: "&cMasz już najlepsze narzędzie!"
+shop-armor-already-owned: "&cMasz już zbroję tego lub lepszego poziomu!"
+shop-item-already-owned: "&cMasz już ten przedmiot!"
 
 # --- GUI Setup ---
 setup-lobby-set: "&aLobby oczekiwania ustawione!"
@@ -596,7 +601,3 @@ scoreboard-ingame-lines:
   - "%teams_status%"
   - ""
   - "&e%server_ip%"
-
-# --- Poziomy & Doświadczenie ---
-level-up: "&e&l▲ AWANS! &7Jesteś teraz poziom &b%level%"
-level-up-rank: "&7Zdobyłeś: &e%rank%"

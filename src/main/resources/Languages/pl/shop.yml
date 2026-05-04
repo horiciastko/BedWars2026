@@ -4,6 +4,10 @@
 #                                                          #
 ############################################################
 
+# Opcjonalne pola dla itemów sklepu:
+# shop_name: nazwa widoczna w GUI sklepu
+# inventory_name: nazwa widoczna na itemie w ekwipunku
+
 shop-title: "&8Sklep Przedmiotów"
 
 categories:
@@ -73,6 +77,16 @@ sections:
         lore:
           - "&7Lepsza ochrona która zostaje"
           - "&7do końca gry."
+      gapple:
+        material: GOLDEN_APPLE
+        name: "&eZłote Jabłko"
+        amount: 1
+        cost: 3
+        currency: GOLD_INGOT
+        slot: 22
+        lore:
+          - "&7Szybka regeneracja i"
+          - "&7awaryjne leczenie w walce."
       bow:
         material: BOW
         name: "&fStandardowy Łuk"
@@ -421,6 +435,8 @@ sections:
         cost: 24
         currency: GOLD_INGOT
         slot: 21
+        enchantments:
+          ARROW_DAMAGE: 1
       punch_bow:
         material: BOW
         name: "&5Łuk Odrzutu (Moc I, Odrzut I)"
@@ -428,26 +444,32 @@ sections:
         cost: 6
         currency: EMERALD
         slot: 22
+        enchantments:
+          ARROW_DAMAGE: 1
+          ARROW_KNOCKBACK: 1
 
   potions:
     items:
       speed:
         material: POTION
-        name: "&fSzybkość II (45s)"
+        shop_name: "&fSzybkość II (45s)"
+        inventory_name: "&fMikstura Szybkości II"
         amount: 1
         cost: 1
         currency: EMERALD
         slot: 19
       jump:
         material: POTION
-        name: "&fSkakanie V (45s)"
+        shop_name: "&fSkakanie V (45s)"
+        inventory_name: "&fMikstura Skakania V"
         amount: 1
         cost: 1
         currency: EMERALD
         slot: 20
       invisibility:
         material: POTION
-        name: "&fNiewidzialność (30s)"
+        shop_name: "&fNiewidzialność (30s)"
+        inventory_name: "&fMikstura Niewidzialności"
         amount: 1
         cost: 2
         currency: EMERALD
@@ -523,7 +545,8 @@ sections:
         slot: 29
       sponge:
         material: SPONGE
-        name: "&eGąbka (x4)"
+        shop_name: "&eGąbka (x4)"
+        inventory_name: "&eGąbka"
         amount: 4
         cost: 3
         currency: GOLD_INGOT
@@ -535,13 +558,4 @@ sections:
         cost: 24
         currency: IRON_INGOT
         slot: 31
-      ender_dragon:
-        material: DRAGON_EGG
-        name: "&5Smok Kresu"
-        amount: 1
-        cost: 4
-        currency: EMERALD
-        slot: 32
-        lore:
-          - "&7Przywołuje Smoka Kresu, który"
-          - "&7atakuje wrogie drużyny i ich łóżka!"
+
