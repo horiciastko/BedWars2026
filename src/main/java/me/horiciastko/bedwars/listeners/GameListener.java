@@ -506,6 +506,21 @@ public class GameListener implements Listener {
         if (arena != null && arena.getState() == Arena.GameState.IN_GAME) {
             BedWars.getInstance().getLanguageManager().localizeItem(player.getUniqueId(),
                     event.getItem().getItemStack());
+
+            if (isBetterSword(event.getItem().getItemStack())) {
+                new org.bukkit.scheduler.BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        Arena currentArena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+                        if (currentArena == null || currentArena.getState() != Arena.GameState.IN_GAME) {
+                            return;
+                        }
+
+                        Team team = BedWars.getInstance().getGameManager().getPlayerTeam(currentArena, player);
+                        BedWars.getInstance().getGameManager().normalizeSwordInventory(player, team);
+                    }
+                }.runTask(BedWars.getInstance());
+            }
         }
 
         if (event.getItem().getItemStack().getType().name().contains("BED")) {
