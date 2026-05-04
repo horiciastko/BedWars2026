@@ -181,6 +181,7 @@ npc-upgrades: "&b&lUPGRADES"
 generator-limit-reached: "&c&lLIMIT REACHED"
 generator-spawning-in: "&eSpawning in &c%seconds%s"
 generator-tier-suffix: " &7(Tier %tier%)"
+generator-upgrade-broadcast: "&b&l%type% GENERATORS &eUPGRADED TO &6&lTIER %tier%"
 generator-diamond-name: "&b&lDIAMOND"
 generator-emerald-name: "&2&lEMERALD"
 
