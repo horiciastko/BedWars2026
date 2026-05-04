@@ -775,8 +775,10 @@ public class GameManager {
         }
         
         org.bukkit.configuration.file.FileConfiguration gConfig = plugin.getConfigManager().getGeneratorConfig();
-        String broadcastFmt = gConfig.getString("messages.upgrade_broadcast",
-                "§b§l%type% GENERATORS §eUPGRADED TO §6§lTIER %tier%");
+        String broadcastFmt = plugin.getLanguageManager().getMessage(null, "generator-upgrade-broadcast");
+        if (broadcastFmt.equals("§cMissing path: generator-upgrade-broadcast")) {
+            broadcastFmt = "§b§l%type% GENERATORS §eUPGRADED TO §6§lTIER %tier%";
+        }
 
         switch (eventId) {
             case "diamond_2":
