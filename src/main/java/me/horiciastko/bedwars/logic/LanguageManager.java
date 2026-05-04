@@ -1,6 +1,7 @@
 package me.horiciastko.bedwars.logic;
 
 import me.horiciastko.bedwars.BedWars;
+import me.horiciastko.bedwars.utils.ItemTagUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -208,9 +209,35 @@ public class LanguageManager {
         if (item == null || item.getType() == org.bukkit.Material.AIR)
             return;
         org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
-        if (meta != null && !meta.hasDisplayName()) {
-            meta.setDisplayName(getItemName(uuid, item.getType()));
+        if (meta == null)
+            return;
+
+        if (item.getType().getMaxStackSize() > 1) {
+            ItemTagUtils.removeTag(item, "inventory_name");
+            meta = item.getItemMeta();
+            if (meta == null)
+                return;
+        }
+
+        String taggedInventoryName = ItemTagUtils.getTag(item, "inventory_name");
+        String resolvedName = null;
+
+        if (taggedInventoryName != null && !taggedInventoryName.isEmpty()) {
+            resolvedName = ChatColor.translateAlternateColorCodes('&', taggedInventoryName);
+        } else if (!meta.hasDisplayName() || hasLegacyQuantitySuffix(meta.getDisplayName())) {
+            resolvedName = getItemName(uuid, item.getType());
+        }
+
+        if (resolvedName != null && !resolvedName.equals(meta.getDisplayName())) {
+            meta.setDisplayName(resolvedName);
             item.setItemMeta(meta);
         }
+    }
+
+    private boolean hasLegacyQuantitySuffix(String displayName) {
+        if (displayName == null || displayName.isEmpty())
+            return false;
+        String stripped = ChatColor.stripColor(displayName);
+        return stripped != null && stripped.matches(".*\\(x\\d+\\)$");
     }
 }

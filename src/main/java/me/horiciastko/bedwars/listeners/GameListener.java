@@ -19,7 +19,9 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -72,11 +74,8 @@ public class GameListener implements Listener {
         }
 
         Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
-        if (arena != null && arena.getState() != Arena.GameState.IN_GAME) {
+        if (arena == null || arena.getState() != Arena.GameState.IN_GAME) {
             event.setCancelled(true);
-            return;
-        }
-        if (arena == null) {
             return;
         }
 
@@ -95,6 +94,12 @@ public class GameListener implements Listener {
 
             if (arena.getPlacedBlocks().contains(block.getLocation())) {
                 arena.getPlacedBlocks().remove(block.getLocation());
+                // Sponge/wet_sponge: suppress the default drop (which would be wet_sponge) and
+                // give back a regular dry sponge instead
+                if (block.getType() == Material.SPONGE || block.getType() == Material.WET_SPONGE) {
+                    event.setDropItems(false);
+                    block.getWorld().dropItemNaturally(block.getLocation(), new ItemStack(Material.SPONGE, 1));
+                }
             } else {
                 event.setCancelled(true);
                 String msg = BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(),
@@ -200,7 +205,7 @@ public class GameListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onBlockPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
         
@@ -218,12 +223,19 @@ public class GameListener implements Listener {
         }
 
         Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
-        if (arena != null && arena.getState() != Arena.GameState.IN_GAME) {
+        if (arena == null || arena.getState() != Arena.GameState.IN_GAME) {
             event.setCancelled(true);
             return;
         }
-        if (arena == null) {
-            return;
+
+        // When sneaking and right-clicking a bed while holding a block, Minecraft bypasses
+        // the bed interaction and fires BlockPlaceEvent instead — cancel it so the bed GUI opens.
+        if (player.isSneaking()) {
+            org.bukkit.block.Block against = event.getBlockAgainst();
+            if (against != null && against.getType().name().contains("BED")) {
+                event.setCancelled(true);
+                return;
+            }
         }
 
         for (Team t : arena.getTeams()) {
@@ -253,6 +265,18 @@ public class GameListener implements Listener {
                 player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(),
                         "interact-cant-build-generator"));
                 return;
+            }
+        }
+
+        // Also protect per-team iron generators
+        for (me.horiciastko.bedwars.models.Team t : arena.getTeams()) {
+            for (org.bukkit.Location loc : t.getGenerators()) {
+                if (event.getBlock().getLocation().distance(loc) < 1.6) {
+                    event.setCancelled(true);
+                    player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(),
+                            "interact-cant-build-generator"));
+                    return;
+                }
             }
         }
 
@@ -448,14 +472,26 @@ public class GameListener implements Listener {
         Player player = event.getPlayer();
         Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
 
-        if (arena == null || arena.getState() != Arena.GameState.IN_GAME) {
+        if (arena == null) {
+            return;
+        }
+        
+        if (arena.getState() != Arena.GameState.IN_GAME) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Prevent dropping items while falling into the void (exploit: drop before death to deny kill loot)
+        int voidY = BedWars.getInstance().getConfig().getInt("game.void-y-level", 0);
+        if (player.getLocation().getY() < voidY) {
+            event.setCancelled(true);
             return;
         }
 
         Material type = event.getItemDrop().getItemStack().getType();
         String name = type.name();
 
-        if (name.endsWith("_SWORD") || name.endsWith("_HELMET") || name.endsWith("_CHESTPLATE")
+        if (type == Material.WOODEN_SWORD || name.endsWith("_HELMET") || name.endsWith("_CHESTPLATE")
                 || name.endsWith("_LEGGINGS") || name.endsWith("_BOOTS")
                 || name.endsWith("_PICKAXE") || name.endsWith("_AXE") || type == Material.SHEARS
                 || name.contains("BED")) {
@@ -492,6 +528,44 @@ public class GameListener implements Listener {
             event.setCancelled(true);
         }
 
+        if (handleWoodenSwordInventoryClick(event, player)) {
+            return;
+        }
+
+        // Prevent placing permanent kit items into any external inventory (chest, etc.)
+        org.bukkit.inventory.Inventory topInv = event.getView().getTopInventory();
+        boolean isExternalContainer = topInv != null
+                && topInv.getType() != org.bukkit.event.inventory.InventoryType.CRAFTING
+                && topInv.getType() != org.bukkit.event.inventory.InventoryType.PLAYER
+                && !(event.getView().getTopInventory().getHolder() instanceof me.horiciastko.bedwars.gui.BaseGUI);
+
+        if (isExternalContainer) {
+            ItemStack moved = null;
+
+            // SHIFT_CLICK from player inventory moves to container
+            if (event.isShiftClick() && event.getClickedInventory() == player.getInventory()) {
+                moved = event.getCurrentItem();
+            }
+            // Any click placing cursor into container slots
+            else if (event.getClickedInventory() == topInv) {
+                moved = event.getCursor();
+                
+                if (event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
+                    moved = player.getInventory().getItem(event.getHotbarButton());
+                } else {
+                    try {
+                        if (event.getClick().name().equals("SWAP_OFFHAND")) {
+                            moved = player.getInventory().getItemInOffHand();
+                        }
+                    } catch (NoSuchMethodError | Exception ignored) {}
+                }
+            }
+            if (isBwPermanentItem(moved)) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+
         if (event.getCurrentItem() != null) {
             BedWars.getInstance().getLanguageManager().localizeItem(player.getUniqueId(), event.getCurrentItem());
         }
@@ -501,9 +575,134 @@ public class GameListener implements Listener {
     }
 
     @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player))
+            return;
+        Player player = (Player) event.getWhoClicked();
+
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        if (arena == null || arena.getState() != Arena.GameState.IN_GAME)
+            return;
+
+        org.bukkit.inventory.Inventory topInv = event.getView().getTopInventory();
+        boolean isExternalContainer = topInv != null
+                && topInv.getType() != org.bukkit.event.inventory.InventoryType.CRAFTING
+                && topInv.getType() != org.bukkit.event.inventory.InventoryType.PLAYER
+                && !(event.getView().getTopInventory().getHolder() instanceof me.horiciastko.bedwars.gui.BaseGUI);
+
+        if (isExternalContainer) {
+            if (isBwPermanentItem(event.getOldCursor())) {
+                for (int slot : event.getRawSlots()) {
+                    if (slot < topInv.getSize()) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player))
+            return;
+
+        Player player = (Player) event.getPlayer();
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        if (arena == null || arena.getState() != Arena.GameState.IN_GAME)
+            return;
+
+        scheduleSwordNormalization(player);
+    }
+
+    private boolean isBwPermanentItem(ItemStack item) {
+        if (item == null || item.getType() == Material.AIR) return false;
+        String name = item.getType().name();
+        return name.equals("WOODEN_SWORD") || name.endsWith("_PICKAXE") || name.endsWith("_AXE")
+                || name.endsWith("_HELMET") || name.endsWith("_CHESTPLATE")
+                || name.endsWith("_LEGGINGS") || name.endsWith("_BOOTS")
+                || name.equals("SHEARS") || name.equals("BOW") || name.equals("STICK");
+    }
+
+    private boolean handleWoodenSwordInventoryClick(InventoryClickEvent event, Player player) {
+        if (event.getClickedInventory() != player.getInventory()) {
+            return false;
+        }
+
+        ItemStack current = event.getCurrentItem();
+        ItemStack cursor = event.getCursor();
+
+        if (isWoodenSword(current)) {
+            if (isBetterSword(cursor)) {
+                replaceWoodenSwordSlot(event, cursor, -1);
+                return true;
+            }
+
+            if (event.getClick() == org.bukkit.event.inventory.ClickType.NUMBER_KEY) {
+                ItemStack hotbarItem = player.getInventory().getItem(event.getHotbarButton());
+                if (isBetterSword(hotbarItem)) {
+                    replaceWoodenSwordSlot(event, hotbarItem, event.getHotbarButton());
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void replaceWoodenSwordSlot(InventoryClickEvent event, ItemStack swordItem, int hotbarButton) {
+        event.setCancelled(true);
+
+        ItemStack replacement = swordItem.clone();
+        event.getWhoClicked().getInventory().setItem(event.getSlot(), replacement);
+
+        if (hotbarButton >= 0) {
+            event.getWhoClicked().getInventory().setItem(hotbarButton, null);
+        } else {
+            event.setCursor(new ItemStack(Material.AIR));
+        }
+    }
+
+    private boolean isWoodenSword(ItemStack item) {
+        return item != null && item.getType() == Material.WOODEN_SWORD;
+    }
+
+    private boolean isBetterSword(ItemStack item) {
+        return item != null && item.getType() != Material.WOODEN_SWORD
+                && item.getType().name().endsWith("_SWORD");
+    }
+
+    private void scheduleSwordNormalization(Player player) {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                Arena currentArena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+                if (currentArena == null || currentArena.getState() != Arena.GameState.IN_GAME) {
+                    return;
+                }
+
+                Team team = BedWars.getInstance().getGameManager().getPlayerTeam(currentArena, player);
+                BedWars.getInstance().getGameManager().normalizeSwordInventory(player, team);
+            }
+        }.runTask(BedWars.getInstance());
+    }
+
+    @EventHandler
     public void onEntityInteract(PlayerInteractEntityEvent event) {
         if (event.getHand() != EquipmentSlot.HAND)
             return;
+
+        // Prevent feeding iron ingots to bw_mob golems (repair)
+        if (event.getRightClicked() instanceof org.bukkit.entity.IronGolem) {
+            if (event.getRightClicked().getScoreboardTags().contains("bw_mob")) {
+                ItemStack inHand = event.getPlayer().getInventory().getItemInMainHand();
+                if (inHand.getType() == Material.IRON_INGOT) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
+
         if (!(event.getRightClicked() instanceof Villager))
             return;
         Villager villager = (Villager) event.getRightClicked();
@@ -598,6 +797,30 @@ public class GameListener implements Listener {
             event.setCancelled(true);
         }
 
+        // Block hopper interaction in-game
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK
+                && event.getClickedBlock() != null
+                && event.getClickedBlock().getType() == Material.HOPPER) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Block placing water in any base region
+        if ((event.getAction() == Action.RIGHT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_AIR)
+                && event.getItem() != null && event.getItem().getType() == Material.WATER_BUCKET) {
+            if (event.getClickedBlock() != null) {
+                org.bukkit.Location placeLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
+                for (Team t : arena.getTeams()) {
+                    if (isInside(placeLoc, t.getBasePos1(), t.getBasePos2())) {
+                        event.setCancelled(true);
+                        player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(
+                                player.getUniqueId(), "interact-cant-build"));
+                        return;
+                    }
+                }
+            }
+        }
+
         ItemStack itemStack = event.getItem();
         if (itemStack == null || !itemStack.hasItemMeta())
             return;
@@ -628,30 +851,74 @@ public class GameListener implements Listener {
                 if (event.getClickedBlock() == null)
                     return;
                     
-                Team playerTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, player);
                 org.bukkit.Location towerLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
-                if (playerTeam != null) {
-                    for (Team t : arena.getTeams()) {
-                        if (!t.getName().equals(playerTeam.getName())) {
-                            if (isInside(towerLoc, t.getBasePos1(), t.getBasePos2())) {
-                                event.setCancelled(true);
-                                player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(
-                                        player.getUniqueId(), "interact-cant-build"));
-                                return;
+
+                // Block tower in any base (own or enemy) and near generators
+                for (Team t : arena.getTeams()) {
+                    if (isInside(towerLoc, t.getBasePos1(), t.getBasePos2())) {
+                        event.setCancelled(true);
+                        player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(
+                                player.getUniqueId(), "interact-cant-build"));
+                        return;
+                    }
+                }
+                // Generator proximity check — compute full 4x4 footprint of the tower
+                int tOx = 0, tOz = 0;
+                switch (player.getFacing()) {
+                    case NORTH: tOx = -1; tOz = -3; break;
+                    case SOUTH: tOx = -2; tOz =  0; break;
+                    case EAST:  tOx =  0; tOz = -1; break;
+                    case WEST:  tOx = -3; tOz = -2; break;
+                    default:    tOx = -1; tOz = -1; break;
+                }
+                org.bukkit.Location towerBase = towerLoc.clone().add(tOx, 0, tOz);
+                boolean towerNearGen = false;
+                outer:
+                for (int tx = 0; tx < 4; tx++) {
+                    for (int tz = 0; tz < 4; tz++) {
+                        org.bukkit.Location footprint = towerBase.clone().add(tx, 0, tz);
+                        for (org.bukkit.Location gen : arena.getDiamondGenerators()) {
+                            if (footprint.distance(gen) <= 1.6) { towerNearGen = true; break outer; }
+                        }
+                        for (org.bukkit.Location gen : arena.getEmeraldGenerators()) {
+                            if (footprint.distance(gen) <= 1.6) { towerNearGen = true; break outer; }
+                        }
+                        for (Team genTeam : arena.getTeams()) {
+                            for (org.bukkit.Location gen : genTeam.getGenerators()) {
+                                if (footprint.distance(gen) <= 1.6) { towerNearGen = true; break outer; }
                             }
                         }
                     }
                 }
-                
+                if (towerNearGen) {
+                    event.setCancelled(true);
+                    player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(
+                            player.getUniqueId(), "interact-cant-build"));
+                    return;
+                }
+
                 event.setCancelled(true);
                 if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
                     itemStack.setAmount(itemStack.getAmount() - 1);
                 }
                 me.horiciastko.bedwars.utils.TowerBuilder.build(player, arena, towerLoc);
-            } else if (itemStack.getType() == Material.SNOWBALL || itemStack.getType().name().contains("SPAWN_EGG")) {
+            } else if (itemStack.getType() == Material.SNOWBALL) {
+                // Bedbug: thrown as a projectile; silverfish spawns on landing (ProjectileListener)
+                event.setCancelled(true);
+                if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
+                    itemStack.setAmount(itemStack.getAmount() - 1);
+                }
+                org.bukkit.entity.Snowball thrown = player.launchProjectile(org.bukkit.entity.Snowball.class);
+                thrown.addScoreboardTag("bw_bedbug");
+                Team throwTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, player);
+                if (throwTeam != null) {
+                    thrown.addScoreboardTag("team_" + throwTeam.getName());
+                }
+            } else if (itemStack.getType().name().contains("SPAWN_EGG")) {
+                // Dream Defender: placed on a block surface
                 if (event.getClickedBlock() == null)
                     return;
-                    
+
                 Team playerTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, player);
                 org.bukkit.Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
                 if (playerTeam != null) {
@@ -666,36 +933,50 @@ public class GameListener implements Listener {
                         }
                     }
                 }
-                
+
                 event.setCancelled(true);
                 if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
                     itemStack.setAmount(itemStack.getAmount() - 1);
                 }
 
-                org.bukkit.entity.Entity entity;
-                String key;
-                if (itemStack.getType() == Material.SNOWBALL) {
-                    entity = event.getClickedBlock().getWorld().spawn(
-                            spawnLoc,
-                            org.bukkit.entity.Silverfish.class);
-                    key = "entity-bedbug";
-                } else {
-                    entity = event.getClickedBlock().getWorld().spawn(
-                            spawnLoc,
-                            org.bukkit.entity.IronGolem.class);
-                    key = "entity-dream-defender";
-                }
-
-                String customName = BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(), key);
-                entity.setCustomName(customName);
-                if (entity instanceof org.bukkit.entity.LivingEntity) {
-                    org.bukkit.entity.LivingEntity le = (org.bukkit.entity.LivingEntity) entity;
-                    le.setCustomNameVisible(true);
-                }
-                entity.addScoreboardTag("bw_mob");
+                org.bukkit.entity.IronGolem golem = event.getClickedBlock().getWorld().spawn(
+                        spawnLoc, org.bukkit.entity.IronGolem.class);
+                golem.setCustomName(BedWars.getInstance().getLanguageManager().getMessage(
+                        player.getUniqueId(), "entity-dream-defender"));
+                golem.setCustomNameVisible(true);
+                golem.addScoreboardTag("bw_mob");
                 if (playerTeam != null) {
-                    entity.addScoreboardTag("team_" + playerTeam.getName());
+                    golem.addScoreboardTag("team_" + playerTeam.getName());
                 }
+                // Despawn countdown hologram above golem
+                final int despawnSeconds = 120;
+                org.bukkit.entity.ArmorStand timerStand = spawnLoc.getWorld().spawn(
+                        spawnLoc.clone().add(0, 2.5, 0), org.bukkit.entity.ArmorStand.class, as -> {
+                            as.setVisible(false);
+                            as.setGravity(false);
+                            as.setSmall(true);
+                            as.setMarker(true);
+                            as.setCustomNameVisible(true);
+                            as.setCustomName("§b§l" + despawnSeconds + "s");
+                        });
+                new org.bukkit.scheduler.BukkitRunnable() {
+                    int ticks = 0;
+                    @Override
+                    public void run() {
+                        if (!golem.isValid() || golem.isDead() || ticks >= despawnSeconds * 20) {
+                            if (golem.isValid() && !golem.isDead()) golem.setHealth(0);
+                            timerStand.remove();
+                            this.cancel();
+                            return;
+                        }
+                        timerStand.teleport(golem.getLocation().add(0, 2.5, 0));
+                        if (ticks % 20 == 0) {
+                            int remaining = despawnSeconds - (ticks / 20);
+                            timerStand.setCustomName("§b§l" + remaining + "s");
+                        }
+                        ticks++;
+                    }
+                }.runTaskTimer(BedWars.getInstance(), 1L, 1L);
             } else if (itemStack.getType() == Material.DRAGON_EGG) {
                 if (event.getClickedBlock() == null)
                     return;
@@ -722,17 +1003,95 @@ public class GameListener implements Listener {
 
                 Location spawnLoc = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
                 BedWars.getInstance().getGameManager().spawnTeamDragon(player, arena, spawnLoc);
-            } else if (itemStack.getType() == Material.MILK_BUCKET) {
-                event.setCancelled(true);
-                if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
-                    itemStack.setAmount(itemStack.getAmount() - 1);
+            }
+        }
+    }
+
+    // Intercept milk bucket consumption so the 2nd magic milk doesn't act as normal milk
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerConsumeMilk(org.bukkit.event.player.PlayerItemConsumeEvent event) {
+        if (event.getItem().getType() != Material.MILK_BUCKET)
+            return;
+        Player player = event.getPlayer();
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        if (arena == null || arena.getState() != Arena.GameState.IN_GAME)
+            return;
+
+        // Save current potion effects before the milk consumes and clears them.
+        // Do NOT cancel — let Bukkit handle the animation and bucket replacement naturally.
+        // Restore effects + grant immunity 1 tick later to counter the milk clearing effect.
+        java.util.Collection<org.bukkit.potion.PotionEffect> savedEffects =
+                new java.util.ArrayList<>(player.getActivePotionEffects());
+
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!player.isOnline()) return;
+                // Re-apply effects the milk may have cleared
+                for (org.bukkit.potion.PotionEffect effect : savedEffects) {
+                    player.addPotionEffect(effect, true);
                 }
                 BedWars.getInstance().getGameManager().setTrapImmunity(player.getUniqueId(), 30);
                 player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(),
                         "interact-magic-milk"));
                 player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GENERIC_DRINK, 1f, 1f);
             }
-        }
+        }.runTaskLater(BedWars.getInstance(), 1L);
+    }
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerConsumePotion(org.bukkit.event.player.PlayerItemConsumeEvent event) {
+        if (event.getItem().getType() != Material.POTION)
+            return;
+
+        Player player = event.getPlayer();
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        if (arena == null || arena.getState() != Arena.GameState.IN_GAME)
+            return;
+
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (player.getInventory().getItemInMainHand().getType() == Material.GLASS_BOTTLE) {
+                    player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
+                }
+                try {
+                    if (player.getInventory().getItemInOffHand().getType() == Material.GLASS_BOTTLE) {
+                        player.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
+                    }
+                } catch (NoSuchMethodError ignored) {
+                }
+                player.updateInventory();
+            }
+        }.runTask(BedWars.getInstance());
+    }
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
+    public void onWaterBucketEmpty(org.bukkit.event.player.PlayerBucketEmptyEvent event) {
+        if (event.getBucket() != Material.WATER_BUCKET)
+            return;
+
+        Player player = event.getPlayer();
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        if (arena == null || arena.getState() != Arena.GameState.IN_GAME
+            || player.getGameMode() == org.bukkit.GameMode.CREATIVE)
+            return;
+
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (player.getInventory().getItemInMainHand().getType() == Material.BUCKET) {
+                    player.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
+                }
+                try {
+                    if (player.getInventory().getItemInOffHand().getType() == Material.BUCKET) {
+                        player.getInventory().setItemInOffHand(new ItemStack(Material.AIR));
+                    }
+                } catch (NoSuchMethodError ignored) {
+                }
+                player.updateInventory();
+            }
+        }.runTask(BedWars.getInstance());
     }
 
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
@@ -761,6 +1120,12 @@ public class GameListener implements Listener {
             return;
         }
 
+        if (!(event instanceof org.bukkit.event.entity.EntityDamageByEntityEvent)
+                && isPeacefulLikeDamage(event.getCause())) {
+            event.setCancelled(true);
+            return;
+        }
+
         try {
             if (event.getCause() == org.bukkit.event.entity.EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK) {
                 if (arena.getPvpMode() == Arena.PvpMode.LEGACY_1_8) {
@@ -773,6 +1138,29 @@ public class GameListener implements Listener {
 
         if (event instanceof org.bukkit.event.entity.EntityDamageByEntityEvent) {
             org.bukkit.event.entity.EntityDamageByEntityEvent edbe = (org.bukkit.event.entity.EntityDamageByEntityEvent) event;
+
+            // Knockback stick: apply manual knockback in 1.21+ where KNOCKBACK enchant on sticks is ignored
+            if (edbe.getDamager() instanceof Player) {
+                Player attacker = (Player) edbe.getDamager();
+                ItemStack weapon = attacker.getInventory().getItemInHand();
+                if (weapon != null && weapon.getType() == Material.STICK
+                        && weapon.containsEnchantment(org.bukkit.enchantments.Enchantment.KNOCKBACK)) {
+                    int lvl = weapon.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.KNOCKBACK);
+                    org.bukkit.util.Vector dir = player.getLocation()
+                            .subtract(attacker.getLocation()).toVector();
+                    dir.setY(0);
+                    if (dir.lengthSquared() > 0) dir.normalize();
+                    dir.multiply(0.4 + lvl * 0.4).setY(0.35);
+                    // Schedule one tick later so it overrides vanilla knockback
+                    final org.bukkit.util.Vector finalDir = dir;
+                    new org.bukkit.scheduler.BukkitRunnable() {
+                        @Override public void run() {
+                            if (player.isOnline()) player.setVelocity(player.getVelocity().add(finalDir));
+                        }
+                    }.runTaskLater(BedWars.getInstance(), 1L);
+                }
+            }
+
             if (edbe.getDamager() instanceof org.bukkit.entity.TNTPrimed
                     || edbe.getDamager() instanceof org.bukkit.entity.Fireball) {
 
@@ -910,6 +1298,59 @@ public class GameListener implements Listener {
                     event.setCancelled(true);
                 }
             }
+        }
+    }
+
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onFoodLevelChange(FoodLevelChangeEvent event) {
+        if (!(event.getEntity() instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) event.getEntity();
+        if (!shouldPreventHungerLoss(player)) {
+            return;
+        }
+
+        event.setCancelled(true);
+        if (player.getFoodLevel() < 20) {
+            player.setFoodLevel(20);
+        }
+        player.setSaturation(20f);
+        player.setExhaustion(0f);
+    }
+
+    private boolean shouldPreventHungerLoss(Player player) {
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        if (arena != null) {
+            return true;
+        }
+
+        Location mainLobby = BedWars.getInstance().getGameManager().getMainLobbyLocation();
+        if (mainLobby == null || mainLobby.getWorld() == null || player.getWorld() == null) {
+            return false;
+        }
+
+        return mainLobby.getWorld().getUID().equals(player.getWorld().getUID());
+    }
+
+    private boolean isPeacefulLikeDamage(org.bukkit.event.entity.EntityDamageEvent.DamageCause cause) {
+        switch (cause) {
+            case FIRE:
+            case FIRE_TICK:
+            case LAVA:
+            case HOT_FLOOR:
+            case DROWNING:
+            case SUFFOCATION:
+            case CONTACT:
+            case STARVATION:
+            case POISON:
+            case WITHER:
+            case MAGIC:
+            case DRAGON_BREATH:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -1112,7 +1553,7 @@ public class GameListener implements Listener {
 
                         for (int i = 0; i <= steps; i++) {
                             org.bukkit.Location interp = lastLocation.clone().add(vec.clone().multiply(i)).subtract(0,
-                                    1,
+                                    2,
                                     0);
                             placeBridgeBlocks(interp, finalWool, arena, event.getEntity().getVelocity());
                         }
@@ -1144,43 +1585,36 @@ public class GameListener implements Listener {
         }
     }
 
-    @EventHandler
-    public void onProjectileHit(org.bukkit.event.entity.ProjectileHitEvent event) {
-        if (!(event.getEntity().getShooter() instanceof Player))
-            return;
-        Player player = (Player) event.getEntity().getShooter();
-        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
-        if (arena == null || arena.getState() != Arena.GameState.IN_GAME)
-            return;
-
-        if (event.getEntity() instanceof org.bukkit.entity.Snowball) {
-            org.bukkit.entity.Silverfish fish = event.getEntity().getWorld().spawn(event.getEntity().getLocation(),
-                    org.bukkit.entity.Silverfish.class);
-            String fishName = BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(),
-                    "entity-bedbug");
-            fish.setCustomName(fishName);
-            fish.setCustomNameVisible(true);
-            fish.addScoreboardTag("bw_mob");
-            fish.addScoreboardTag(
-                    "team_" + BedWars.getInstance().getGameManager().getPlayerTeam(arena, player).getName());
-        }
-    }
-
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     public void onSpongePlace(BlockPlaceEvent event) {
         if (event.getBlock().getType() != Material.SPONGE)
             return;
 
         org.bukkit.Location loc = event.getBlock().getLocation();
+        boolean absorbedWater = false;
         for (int x = -2; x <= 2; x++) {
             for (int y = -2; y <= 2; y++) {
                 for (int z = -2; z <= 2; z++) {
                     Block b = loc.clone().add(x, y, z).getBlock();
                     if (b.getType() == Material.WATER) {
                         b.setType(Material.AIR);
+                        absorbedWater = true;
                     }
                 }
             }
+        }
+
+        // Remove the sponge block after absorbing water (1-tick delay so the place event finishes)
+        if (absorbedWater) {
+            final Block sponge = event.getBlock();
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (sponge.getType() == Material.SPONGE || sponge.getType() == Material.WET_SPONGE) {
+                        sponge.setType(Material.AIR);
+                    }
+                }
+            }.runTaskLater(BedWars.getInstance(), 1L);
         }
     }
 
@@ -1226,4 +1660,33 @@ public class GameListener implements Listener {
         }
         return closest;
     }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onSpectatorMove(org.bukkit.event.player.PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (player.getGameMode() != org.bukkit.GameMode.SPECTATOR)
+            return;
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        if (arena == null || arena.getState() != Arena.GameState.IN_GAME)
+            return;
+        if (arena.getPos1() == null || arena.getPos2() == null)
+            return;
+        Location to = event.getTo();
+        if (to == null)
+            return;
+        double minX = Math.min(arena.getPos1().getX(), arena.getPos2().getX());
+        double maxX = Math.max(arena.getPos1().getX(), arena.getPos2().getX());
+        double minY = Math.min(arena.getPos1().getY(), arena.getPos2().getY()) - 20;
+        double maxY = Math.max(arena.getPos1().getY(), arena.getPos2().getY()) + 20;
+        double minZ = Math.min(arena.getPos1().getZ(), arena.getPos2().getZ());
+        double maxZ = Math.max(arena.getPos1().getZ(), arena.getPos2().getZ());
+        if (to.getX() < minX || to.getX() > maxX || to.getY() < minY || to.getY() > maxY
+                || to.getZ() < minZ || to.getZ() > maxZ) {
+            // Push spectator back inside bounds
+            Location from = event.getFrom();
+            event.setTo(new Location(from.getWorld(), from.getX(), Math.max(minY, Math.min(maxY, from.getY())),
+                    from.getZ(), from.getYaw(), from.getPitch()));
+        }
+    }
 }
+

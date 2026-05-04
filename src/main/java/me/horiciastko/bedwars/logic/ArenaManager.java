@@ -54,14 +54,39 @@ public class ArenaManager {
                     arena.setWorldName(worldName);
 
                     if (worldName != null && org.bukkit.Bukkit.getWorld(worldName) == null) {
-                        if (new java.io.File(org.bukkit.Bukkit.getWorldContainer(), worldName).exists()) {
+                        if (new java.io.File(org.bukkit.Bukkit.getWorldContainer(), worldName).exists()
+                                || me.horiciastko.bedwars.utils.WorldBackupUtils.hasBackup(worldName)) {
+                            // Restore clean backup before loading so mid-game state from a crashed
+                            // server does not persist
+                            boolean hadBackup = me.horiciastko.bedwars.utils.WorldBackupUtils.hasBackup(worldName);
+                            if (hadBackup) {
+                                plugin.getLogger().info("Restoring world backup for arena: " + name);
+                                me.horiciastko.bedwars.utils.WorldBackupUtils.restoreBackup(worldName);
+                            }
                             org.bukkit.World creator = org.bukkit.Bukkit
                                     .createWorld(new org.bukkit.WorldCreator(worldName));
-                            if (creator != null)
+                            if (creator != null) {
                                 creator.setAutoSave(false);
+                                creator.getEntitiesByClass(org.bukkit.entity.Item.class)
+                                        .forEach(org.bukkit.entity.Entity::remove);
+                                if (!hadBackup) {
+                                    // No backup existed — create one now so future resets work correctly
+                                    final String worldNameForBackup = worldName;
+                                    final String arenaNameForLog = name;
+                                    org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                                        boolean ok = me.horiciastko.bedwars.utils.WorldBackupUtils.createBackup(worldNameForBackup);
+                                        if (ok) {
+                                            plugin.getLogger().info("Created initial world backup for arena: " + arenaNameForLog);
+                                        }
+                                    });
+                                }
+                            }
                         }
                     } else if (worldName != null && org.bukkit.Bukkit.getWorld(worldName) != null) {
-                        org.bukkit.Bukkit.getWorld(worldName).setAutoSave(false);
+                        org.bukkit.World world = org.bukkit.Bukkit.getWorld(worldName);
+                        world.setAutoSave(false);
+                        world.getEntitiesByClass(org.bukkit.entity.Item.class)
+                                .forEach(org.bukkit.entity.Entity::remove);
                     }
 
                     arena.setLobbyLocation(
@@ -155,6 +180,8 @@ public class ArenaManager {
                         }
 
                         arena.getTeams().addAll(distinctTeams.values());
+
+                        plugin.getNpcManager().cleanupArenaNpcResidue(arena);
 
                         for (Team team : arena.getTeams()) {
                             try (PreparedStatement psGens = conn.prepareStatement(
@@ -439,6 +466,7 @@ public class ArenaManager {
 
                 if (world != null) {
                     world.setAutoSave(true);
+                    plugin.getNpcManager().cleanupArenaNpcResidue(arena);
 
                     if (isNewEdit || !player.getWorld().getName().equals(world.getName())) {
                         Location target = arena.getLobbyLocation();
@@ -484,10 +512,22 @@ public class ArenaManager {
         player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "arena-exited-setup"));
 
         if (arena != null && arena.getWorldName() != null) {
+            plugin.getNpcManager().cleanupArenaNpcResidue(arena);
             org.bukkit.World world = org.bukkit.Bukkit.getWorld(arena.getWorldName());
             if (world != null) {
                 world.save();
                 world.setAutoSave(false);
+                // Create/update backup asynchronously so the clean post-edit state is preserved
+                final String worldNameToBackup = arena.getWorldName();
+                final String arenaNameForLog = arena.getName();
+                org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    boolean ok = me.horiciastko.bedwars.utils.WorldBackupUtils.createBackup(worldNameToBackup);
+                    if (ok) {
+                        plugin.getLogger().info("World backup created for arena: " + arenaNameForLog);
+                    } else {
+                        plugin.getLogger().warning("Failed to create world backup for arena: " + arenaNameForLog);
+                    }
+                });
             }
         }
     }
@@ -539,6 +579,11 @@ public class ArenaManager {
     }
 
     public void joinArena(Player player, Arena arena) {
+        if (arena.isResetting()) {
+            player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "arena-resetting"));
+            return;
+        }
+
         if (!arena.isEnabled() && !player.hasPermission("bedwars.admin")) {
             player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "arena-disabled"));
             return;
@@ -583,6 +628,7 @@ public class ArenaManager {
             setPlayerArena(player, arena);
             plugin.getSignManager().updateSigns(arena);
 
+            player.setGameMode(org.bukkit.GameMode.ADVENTURE);
             plugin.getGameManager().applyPvpSettings(player, arena);
 
             player.getInventory().clear();

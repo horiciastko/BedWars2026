@@ -29,6 +29,7 @@ public class GameManager {
     private final Map<UUID, Integer> playerPickaxeTiers = new ConcurrentHashMap<>();
     private final Map<UUID, Integer> playerAxeTiers = new ConcurrentHashMap<>();
     private final Map<UUID, String> playerArmorTiers = new ConcurrentHashMap<>();
+    private final java.util.Set<UUID> playerHasShears = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final java.util.Set<UUID> buildMode = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<Arena, Map<UUID, SessionStats>> sessionStats = new ConcurrentHashMap<>();
 
@@ -342,12 +343,18 @@ public class GameManager {
         if (arena.getWorldName() != null) {
             org.bukkit.World world = org.bukkit.Bukkit.getWorld(arena.getWorldName());
             if (world != null) {
+                world.setAutoSave(false);
+                world.setDifficulty(org.bukkit.Difficulty.EASY);
                 prepareWorldRules(world);
                 world.setGameRuleValue("mobGriefing", "true");
                 world.setTime(6000L);
                 world.setStorm(false);
                 world.setThundering(false);
                 world.getWorldBorder().reset();
+                // Remove any lingering setup holograms left by admins in edit mode
+                world.getEntitiesByClass(org.bukkit.entity.ArmorStand.class).stream()
+                        .filter(as -> as.getScoreboardTags().contains("bw_hologram"))
+                        .forEach(org.bukkit.entity.Entity::remove);
             }
         }
 
@@ -446,6 +453,7 @@ public class GameManager {
     }
 
     private void spawnGameVisuals(Arena arena) {
+        clearDroppedItems(arena);
         plugin.getVisualizationManager().spawnGameHolograms(arena);
 
         plugin.getNpcManager().spawnNPCs(arena);
@@ -453,12 +461,24 @@ public class GameManager {
 
 
     public void cleanupArena(Arena arena) {
-        playerTeams.remove(arena);
+        // Capture team map BEFORE removing it — endGame calls leaveArena first which
+        // empties arena.getPlayers(), so we must use the team map keyset for tier cleanup
+        Map<UUID, Team> arenaPlayerTeams = playerTeams.remove(arena);
+        if (arenaPlayerTeams != null) {
+            for (UUID uuid : arenaPlayerTeams.keySet()) {
+                playerPickaxeTiers.remove(uuid);
+                playerAxeTiers.remove(uuid);
+                playerArmorTiers.remove(uuid);
+                playerHasShears.remove(uuid);
+            }
+        }
+        // Also clean up any lobby-only players (waiting state, no team assigned)
         if (arena.getPlayers() != null) {
             for (Player p : arena.getPlayers()) {
                 playerPickaxeTiers.remove(p.getUniqueId());
                 playerAxeTiers.remove(p.getUniqueId());
                 playerArmorTiers.remove(p.getUniqueId());
+                playerHasShears.remove(p.getUniqueId());
             }
         }
         plugin.getVisualizationManager().removeGameHolograms(arena);
@@ -468,9 +488,30 @@ public class GameManager {
         if (arena.getWorldName() != null) {
             org.bukkit.World w = org.bukkit.Bukkit.getWorld(arena.getWorldName());
             if (w != null) {
-                w.getEntitiesByClass(org.bukkit.entity.Item.class).forEach(org.bukkit.entity.Entity::remove);
+                clearDroppedItems(arena);
+                // Manually clear player-placed blocks as a fallback in case world reload doesn't
+                for (org.bukkit.Location loc : arena.getPlacedBlocks()) {
+                    try {
+                        if (loc.getWorld() != null) {
+                            loc.getBlock().setType(org.bukkit.Material.AIR, false);
+                        }
+                    } catch (Exception ignored) {}
+                }
             }
         }
+    }
+
+    private void clearDroppedItems(Arena arena) {
+        if (arena == null || arena.getWorldName() == null) {
+            return;
+        }
+
+        org.bukkit.World world = org.bukkit.Bukkit.getWorld(arena.getWorldName());
+        if (world == null) {
+            return;
+        }
+
+        world.getEntitiesByClass(org.bukkit.entity.Item.class).forEach(org.bukkit.entity.Entity::remove);
     }
 
     public void handleDeath(Player player, Arena arena, String reason) {
@@ -483,6 +524,8 @@ public class GameManager {
             player.setFoodLevel(20);
             player.setGameMode(GameMode.SURVIVAL);
             player.getInventory().clear();
+            player.setItemOnCursor(new ItemStack(Material.AIR));
+            player.closeInventory();
 
             if (arena.getLobbyLocation() != null) {
                 player.teleport(arena.getLobbyLocation());
@@ -549,6 +592,8 @@ public class GameManager {
         }
 
         player.getInventory().clear();
+        player.setItemOnCursor(new ItemStack(Material.AIR));
+        player.closeInventory();
         player.setHealth(20);
         player.setFoodLevel(20);
 
@@ -633,6 +678,12 @@ public class GameManager {
                 getOrCreateSessionStats(arena, killer.getUniqueId()).finalKills++;
             }
             plugin.getStatsManager().addDeath(player.getUniqueId());
+
+            // Clear tier maps immediately so they don't persist into the next game
+            playerPickaxeTiers.remove(player.getUniqueId());
+            playerAxeTiers.remove(player.getUniqueId());
+            playerArmorTiers.remove(player.getUniqueId());
+            playerHasShears.remove(player.getUniqueId());
 
             player.setGameMode(GameMode.SPECTATOR);
             if (arena.getLobbyLocation() != null) {
@@ -761,7 +812,10 @@ public class GameManager {
     }
 
     private void broadcastUpgrade(Arena arena, String type, String tier, String fmt) {
-        String msg = fmt.replace("%type%", type).replace("%tier%", tier);
+        // Translate & color codes first (e.g. "&2&lEMERALD"), then strip them for a plain name.
+        String translatedType = org.bukkit.ChatColor.translateAlternateColorCodes('&', type);
+        String cleanType = org.bukkit.ChatColor.stripColor(translatedType);
+        String msg = fmt.replace("%type%", cleanType != null ? cleanType : type).replace("%tier%", tier);
         arena.getPlayers().forEach(p -> {
             p.sendMessage(msg);
             p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1f, 1f);
@@ -812,6 +866,11 @@ public class GameManager {
                 border.setCenter(center);
                 border.setSize(initialSize);
                 border.setSize(2.0, 300);
+                // Damage starts immediately at the border edge (no buffer), 0.5 HP per second
+                border.setDamageBuffer(0.0);
+                border.setDamageAmount(0.5);
+                border.setWarningDistance(5);
+                border.setWarningTime(5);
             }
         }
 
@@ -903,17 +962,41 @@ public class GameManager {
                     Location dragonLoc = dragon.getLocation();
 
                     if (arena.getPos1() != null && arena.getPos2() != null) {
-                        double minX = Math.min(arena.getPos1().getX(), arena.getPos2().getX()) - 50;
-                        double maxX = Math.max(arena.getPos1().getX(), arena.getPos2().getX()) + 50;
-                        double minZ = Math.min(arena.getPos1().getZ(), arena.getPos2().getZ()) - 50;
-                        double maxZ = Math.max(arena.getPos1().getZ(), arena.getPos2().getZ()) + 50;
+                        double minX = Math.min(arena.getPos1().getX(), arena.getPos2().getX());
+                        double maxX = Math.max(arena.getPos1().getX(), arena.getPos2().getX());
+                        double minY = Math.min(arena.getPos1().getY(), arena.getPos2().getY());
+                        double maxY = Math.max(arena.getPos1().getY(), arena.getPos2().getY());
+                        double minZ = Math.min(arena.getPos1().getZ(), arena.getPos2().getZ());
+                        double maxZ = Math.max(arena.getPos1().getZ(), arena.getPos2().getZ());
 
-                        if (dragonLoc.getX() < minX || dragonLoc.getX() > maxX ||
-                                dragonLoc.getZ() < minZ || dragonLoc.getZ() > maxZ) {
-                            org.bukkit.util.Vector toCenter = new Location(dragon.getWorld(),
-                                    (minX + maxX) / 2, dragonLoc.getY(), (minZ + maxZ) / 2)
-                                    .toVector().subtract(dragonLoc.toVector()).normalize().multiply(1.5);
-                            dragon.setVelocity(dragon.getVelocity().add(toCenter));
+                        double cx = (minX + maxX) / 2.0;
+                        double cz = (minZ + maxZ) / 2.0;
+
+                        // Clamp the target Y so the dragon stays inside the arena vertically
+                        double targetY = Math.max(minY + 8, Math.min(maxY - 4, targetLocation.getY() + 5));
+                        targetLocation = new Location(targetLocation.getWorld(),
+                                targetLocation.getX(), targetY, targetLocation.getZ());
+
+                        org.bukkit.util.Vector correction = new org.bukkit.util.Vector(0, 0, 0);
+
+                        // XZ boundary — push back with a buffer of just 5 blocks
+                        boolean outXZ = dragonLoc.getX() < minX - 5 || dragonLoc.getX() > maxX + 5
+                                || dragonLoc.getZ() < minZ - 5 || dragonLoc.getZ() > maxZ + 5;
+                        if (outXZ) {
+                            correction = correction.add(
+                                    new Location(dragon.getWorld(), cx, dragonLoc.getY(), cz)
+                                            .toVector().subtract(dragonLoc.toVector()).normalize().multiply(2.5));
+                        }
+
+                        // Y boundary — push back strongly if outside arena height
+                        double clampedY = Math.max(minY + 8, Math.min(maxY - 4, dragonLoc.getY()));
+                        double yDiff = clampedY - dragonLoc.getY();
+                        if (Math.abs(yDiff) > 3) {
+                            correction = correction.add(new org.bukkit.util.Vector(0, yDiff * 0.15, 0));
+                        }
+
+                        if (correction.lengthSquared() > 0) {
+                            dragon.setVelocity(dragon.getVelocity().add(correction));
                         }
                     }
 
@@ -1211,6 +1294,10 @@ public class GameManager {
         playerAxeTiers.put(uuid, tier);
     }
 
+    public String getPlayerArmorTier(UUID uuid) {
+        return playerArmorTiers.getOrDefault(uuid, "LEATHER");
+    }
+
     public void setPlayerArmorTier(Player player, String tier) {
         playerArmorTiers.put(player.getUniqueId(), tier);
         Arena arena = getPlayerTeam(plugin.getArenaManager().getPlayerArena(player), player) != null
@@ -1222,11 +1309,86 @@ public class GameManager {
         }
     }
 
+    public boolean playerHasShears(UUID uuid) {
+        return playerHasShears.contains(uuid);
+    }
+
+    public void setPlayerHasShears(UUID uuid, boolean has) {
+        if (has) playerHasShears.add(uuid);
+        else playerHasShears.remove(uuid);
+    }
+
+    public void normalizeSwordInventory(Player player, Team team) {
+        if (player == null)
+            return;
+
+        boolean hasBetterSword = false;
+        boolean hasAnySword = false;
+
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item == null || item.getType() == Material.AIR || !item.getType().name().endsWith("_SWORD")) {
+                continue;
+            }
+            hasAnySword = true;
+            if (item.getType() != Material.WOODEN_SWORD) {
+                hasBetterSword = true;
+            }
+        }
+
+        if (hasBetterSword) {
+            removeSpecificItem(player, Material.WOODEN_SWORD);
+            hasAnySword = hasAnySword(player);
+        }
+
+        if (!hasAnySword) {
+            ItemStack sword = com.cryptomorin.xseries.XMaterial.WOODEN_SWORD.parseItem();
+            if (sword == null)
+                sword = new ItemStack(Material.WOODEN_SWORD);
+            setUnbreakable(sword);
+            renameItem(player, sword);
+            player.getInventory().addItem(sword);
+        }
+
+        applyTeamUpgrades(player, team);
+    }
+
+    public void placePurchasedSword(Player player, Team team, ItemStack sword) {
+        if (player == null || sword == null || sword.getType() == Material.AIR) {
+            return;
+        }
+
+        int woodenSlot = findFirstSlot(player, Material.WOODEN_SWORD);
+        if (woodenSlot >= 0) {
+            player.getInventory().setItem(woodenSlot, sword);
+        } else {
+            player.getInventory().addItem(sword);
+        }
+
+        applyTeamUpgrades(player, team);
+    }
+
     public void giveStartingKit(Player player, Team team) {
         if (team == null)
             return;
 
         applyTeamUpgrades(player, team);
+
+        // Restore permanent shears
+        if (playerHasShears.contains(player.getUniqueId())) {
+            boolean hasShears = false;
+            for (org.bukkit.inventory.ItemStack is : player.getInventory().getContents()) {
+                if (is != null && is.getType() == org.bukkit.Material.SHEARS) {
+                    hasShears = true;
+                    break;
+                }
+            }
+            if (!hasShears) {
+                org.bukkit.inventory.ItemStack shears = new org.bukkit.inventory.ItemStack(org.bukkit.Material.SHEARS);
+                setUnbreakable(shears);
+                renameItem(player, shears);
+                player.getInventory().addItem(shears);
+            }
+        }
 
         int pickTier = playerPickaxeTiers.getOrDefault(player.getUniqueId(), 0);
         if (pickTier > 0) {
@@ -1284,25 +1446,7 @@ public class GameManager {
         player.getInventory().setLeggings(leggings);
         player.getInventory().setBoots(boots);
 
-        boolean hasSword = false;
-        for (ItemStack is : player.getInventory().getContents()) {
-            if (is != null && is.getType().name().endsWith("_SWORD")) {
-                hasSword = true;
-                break;
-            }
-        }
-        if (!hasSword) {
-            ItemStack sword = com.cryptomorin.xseries.XMaterial.WOODEN_SWORD.parseItem();
-            if (sword == null)
-                sword = new ItemStack(Material.STONE);
-            setUnbreakable(sword);
-            renameItem(player, sword);
-            int sharpLevel = team.getUpgradeLevel("sharpness");
-            if (sharpLevel > 0) {
-                sword.addUnsafeEnchantment(org.bukkit.enchantments.Enchantment.DAMAGE_ALL, sharpLevel);
-            }
-            player.getInventory().addItem(sword);
-        }
+        normalizeSwordInventory(player, team);
     }
 
     public void applyTeamUpgrades(Player player, Team team) {
@@ -1350,9 +1494,42 @@ public class GameManager {
             return;
         org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(plugin.getLanguageManager().getItemName(player.getUniqueId(), item.getType()));
+            String taggedName = me.horiciastko.bedwars.utils.ItemTagUtils.getTag(item, "inventory_name");
+            if (taggedName != null && !taggedName.isEmpty()) {
+                meta.setDisplayName(org.bukkit.ChatColor.translateAlternateColorCodes('&', taggedName));
+            } else {
+                meta.setDisplayName(plugin.getLanguageManager().getItemName(player.getUniqueId(), item.getType()));
+            }
             item.setItemMeta(meta);
         }
+    }
+
+    private boolean hasAnySword(Player player) {
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (item != null && item.getType() != Material.AIR && item.getType().name().endsWith("_SWORD")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void removeSpecificItem(Player player, Material material) {
+        for (int i = 0; i < player.getInventory().getSize(); i++) {
+            ItemStack item = player.getInventory().getItem(i);
+            if (item != null && item.getType() == material) {
+                player.getInventory().setItem(i, null);
+            }
+        }
+    }
+
+    private int findFirstSlot(Player player, Material material) {
+        for (int i = 0; i < player.getInventory().getSize(); i++) {
+            ItemStack item = player.getInventory().getItem(i);
+            if (item != null && item.getType() == material) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private org.bukkit.inventory.ItemStack createColoredArmor(org.bukkit.Material material, org.bukkit.Color color) {
@@ -1393,18 +1570,29 @@ public class GameManager {
     }
 
     public void endGame(Arena arena, Team winner) {
+        if (arena.getState() == Arena.GameState.ENDING) {
+            return; // already ending, prevent duplicate calls
+        }
         arena.setState(Arena.GameState.ENDING);
 
         String winnerText = (winner != null)
                 ? (winner.getColor() != null ? winner.getColor().toString() : "§f") + winner.getName()
-                : "§cNONE";
+                : null;
 
         String winnerColor = (winner != null && winner.getColor() != null) ? winner.getColor().toString() : "§f";
+        boolean isDraw = (winner == null);
 
         for (Player p : arena.getPlayers()) {
             boolean isWinner = winner != null && winner.getMembers().contains(p);
 
-            if (isWinner) {
+            if (isDraw) {
+                plugin.sendTitle(p,
+                        plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-draw-title"),
+                        plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-draw-subtitle"),
+                        10, 100, 20);
+                p.playSound(p.getLocation(), Sound.ENTITY_WITHER_SPAWN, 0.5f, 1f);
+                plugin.getStatsManager().addLoss(p.getUniqueId());
+            } else if (isWinner) {
                 plugin.sendTitle(p,
                         plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-win-title"),
                         plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-win-subtitle"),
@@ -1424,10 +1612,12 @@ public class GameManager {
             p.sendMessage(plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-victory-separator"));
             p.sendMessage(plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-victory-title"));
             p.sendMessage(" ");
-            p.sendMessage(plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-victory-winner")
-                    .replace("%color%", winnerColor).replace("%winner%", winnerText));
-            p.sendMessage(" ");
-            if (winner != null) {
+            if (isDraw) {
+                p.sendMessage(plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-victory-draw"));
+            } else {
+                p.sendMessage(plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-victory-winner")
+                        .replace("%color%", winnerColor).replace("%winner%", winnerText));
+                p.sendMessage(" ");
                 String members = winner.getMembers().stream().map(Player::getName)
                         .collect(java.util.stream.Collectors.joining(", "));
                 p.sendMessage(plugin.getLanguageManager().getMessage(p.getUniqueId(), "game-victory-members")
@@ -1802,60 +1992,88 @@ public class GameManager {
     }
 
     private void reloadWorldAndResetArena(Arena arena, String worldName) {
+        // Guard: world should already be unloaded at this point
+        org.bukkit.World existingWorld = org.bukkit.Bukkit.getWorld(worldName);
+        if (existingWorld != null) {
+            plugin.getLogger().warning(
+                    "World " + worldName + " is still loaded, cannot reload. Trying to update references...");
+            updateArenaLocations(arena, existingWorld);
+            arena.setResetting(false);
+            plugin.getSignManager().updateSigns(arena);
+            return;
+        }
+
+        // Restore backup on an async thread (file I/O), then load the world back on the main thread
         new BukkitRunnable() {
             @Override
             public void run() {
-                org.bukkit.World existingWorld = org.bukkit.Bukkit.getWorld(worldName);
-                if (existingWorld != null) {
-                    plugin.getLogger().warning(
-                            "World " + worldName + " is still loaded, cannot reload. Trying to update references...");
-                    updateArenaLocations(arena, existingWorld);
-                    arena.setResetting(false);
-                    plugin.getSignManager().updateSigns(arena);
+                if (me.horiciastko.bedwars.utils.WorldBackupUtils.hasBackup(worldName)) {
+                    boolean restored = me.horiciastko.bedwars.utils.WorldBackupUtils.restoreBackup(worldName);
+                    if (restored) {
+                        plugin.getLogger().info("Restored world backup for arena: " + arena.getName());
+                    } else {
+                        plugin.getLogger()
+                                .warning("[BedWars] Failed to restore backup for " + worldName + ", using existing folder.");
+                    }
+                } else {
+                    plugin.getLogger()
+                            .warning("[BedWars] No backup found for " + worldName + ". Loading existing folder as-is.");
+                }
+
+                boolean folderExists = new java.io.File(org.bukkit.Bukkit.getWorldContainer(), worldName).exists();
+                if (!folderExists) {
+                    plugin.getLogger().severe("World folder missing and no backup available: " + worldName);
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            arena.setResetting(false);
+                            plugin.getSignManager().updateSigns(arena);
+                        }
+                    }.runTask(plugin);
                     return;
                 }
 
-                java.io.File worldFolder = new java.io.File(org.bukkit.Bukkit.getWorldContainer(), worldName);
-                if (!worldFolder.exists() || !worldFolder.isDirectory()) {
-                    plugin.getLogger().severe("World folder does not exist: " + worldName + ". Cannot reload arena!");
-                    arena.setResetting(false);
-                    plugin.getSignManager().updateSigns(arena);
-                    return;
-                }
+                // Back on the main thread to load the world
+                new BukkitRunnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            org.bukkit.World reloadedWorld = org.bukkit.Bukkit.createWorld(
+                                    new org.bukkit.WorldCreator(worldName));
 
-                try {
-                    org.bukkit.World reloadedWorld = org.bukkit.Bukkit.createWorld(
-                            new org.bukkit.WorldCreator(worldName));
+                            if (reloadedWorld == null) {
+                                plugin.getLogger().severe(
+                                        "[BedWars] Failed to reload world: " + worldName + ". Arena may be in invalid state!");
+                                arena.setResetting(false);
+                                plugin.getSignManager().updateSigns(arena);
+                                return;
+                            }
 
-                    if (reloadedWorld == null) {
-                        plugin.getLogger()
-                                .severe("Failed to reload world: " + worldName + ". Arena may be in invalid state!");
-                        arena.setResetting(false);
-                        plugin.getSignManager().updateSigns(arena);
-                        return;
+                            reloadedWorld.setAutoSave(false);
+                            reloadedWorld.getEntitiesByClass(org.bukkit.entity.Item.class)
+                                    .forEach(org.bukkit.entity.Entity::remove);
+                            prepareWorldRules(reloadedWorld);
+
+                            updateArenaLocations(arena, reloadedWorld);
+
+                            if (arena.getLobbyLocation() == null || arena.getLobbyLocation().getWorld() == null) {
+                                plugin.getLogger().warning(
+                                        "Arena " + arena.getName() + " lobby location is invalid after world reload!");
+                            }
+
+                            arena.setResetting(false);
+                            plugin.getSignManager().updateSigns(arena);
+                            plugin.getLogger().info("Arena " + arena.getName() + " world reloaded successfully.");
+                        } catch (Exception e) {
+                            plugin.getLogger().severe("Error reloading world " + worldName + ": " + e.getMessage());
+                            e.printStackTrace();
+                            arena.setResetting(false);
+                            plugin.getSignManager().updateSigns(arena);
+                        }
                     }
-
-                    reloadedWorld.setAutoSave(false);
-                    prepareWorldRules(reloadedWorld);
-
-                    updateArenaLocations(arena, reloadedWorld);
-
-                    if (arena.getLobbyLocation() == null || arena.getLobbyLocation().getWorld() == null) {
-                        plugin.getLogger()
-                                .warning("Arena " + arena.getName() + " lobby location is invalid after world reload!");
-                    }
-
-                    arena.setResetting(false);
-                    plugin.getSignManager().updateSigns(arena);
-                    plugin.getLogger().info("Arena " + arena.getName() + " world reloaded successfully.");
-                } catch (Exception e) {
-                    plugin.getLogger().severe("Error reloading world " + worldName + ": " + e.getMessage());
-                    e.printStackTrace();
-                    arena.setResetting(false);
-                    plugin.getSignManager().updateSigns(arena);
-                }
+                }.runTask(plugin);
             }
-        }.runTaskLater(plugin, 60L);
+        }.runTaskAsynchronously(plugin);
     }
 
     public Location getMainLobbyLocation() {
@@ -1878,6 +2096,7 @@ public class GameManager {
         if (world == null)
             return;
 
+        world.setDifficulty(org.bukkit.Difficulty.EASY);
         world.setGameRuleValue("doDaylightCycle", "false");
         world.setGameRuleValue("doWeatherCycle", "false");
         world.setGameRuleValue("doMobSpawning", "false");

@@ -26,6 +26,8 @@ public class LobbyListener implements Listener {
             event.getPlayer().teleport(lobby);
         }
 
+        restoreLobbyStats(event.getPlayer());
+
         plugin.getStatsManager().updateXpBar(event.getPlayer());
     }
 
@@ -35,6 +37,8 @@ public class LobbyListener implements Listener {
         if (isWorldLoaded(lobby)) {
             event.setRespawnLocation(lobby);
         }
+
+        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> restoreLobbyStats(event.getPlayer()));
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -58,6 +62,18 @@ public class LobbyListener implements Listener {
         } else {
             player.teleport(player.getWorld().getSpawnLocation());
         }
+
+        restoreLobbyStats(player);
+    }
+
+    private void restoreLobbyStats(Player player) {
+        // Only reset gamemode for players not currently tracked in any arena
+        if (plugin.getArenaManager().getPlayerArena(player) == null) {
+            player.setGameMode(org.bukkit.GameMode.SURVIVAL);
+        }
+        player.setFoodLevel(20);
+        player.setSaturation(20f);
+        player.setExhaustion(0f);
     }
 
     private boolean isWorldLoaded(Location loc) {

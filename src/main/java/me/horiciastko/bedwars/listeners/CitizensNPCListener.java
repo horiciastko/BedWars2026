@@ -90,6 +90,28 @@ public class CitizensNPCListener implements Listener {
             return;
         }
 
+        // Re-spawn the custom ArmorStand hologram for CitizensNPCImpl instances.
+        // Citizens re-spawns NPCs (chunk reload, server restart, etc.) and fires this event,
+        // but the hologram is not automatically recreated — we must do it here.
+        me.horiciastko.bedwars.npc.CitizensNPCImpl impl =
+                plugin.getNpcManager().getCitizensImpl(npc.getId());
+        if (impl != null) {
+            final net.citizensnpcs.api.npc.NPC finalNpc = npc;
+            if (finalNpc.getEntity() != null) {
+                plugin.getNpcManager().registerEntity(finalNpc.getEntity().getUniqueId(), impl);
+            }
+            new org.bukkit.scheduler.BukkitRunnable() {
+                @Override
+                public void run() {
+                    if (finalNpc.isSpawned() && finalNpc.getEntity() != null) {
+                        plugin.getNpcManager().registerEntity(finalNpc.getEntity().getUniqueId(), impl);
+                        impl.respawnHologram(finalNpc.getEntity());
+                    }
+                }
+            }.runTaskLater(plugin, 2L);
+            return;
+        }
+
         if (npc.hasTrait(net.citizensnpcs.trait.HologramTrait.class)) {
             net.citizensnpcs.trait.HologramTrait holo = npc.getOrAddTrait(net.citizensnpcs.trait.HologramTrait.class);
             holo.clear();

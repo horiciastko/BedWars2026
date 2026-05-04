@@ -388,6 +388,14 @@ public class GeneratorTask extends BukkitRunnable {
                 continue;
             uniqueLocations.add(blockLoc);
 
+            // Ensure the chunk is loaded so getNearbyEntities and dropItem work correctly
+            // even when no player is near the generator.
+            int chunkX = blockLoc.getBlockX() >> 4;
+            int chunkZ = blockLoc.getBlockZ() >> 4;
+            if (!loc.getWorld().isChunkLoaded(chunkX, chunkZ)) {
+                loc.getWorld().loadChunk(chunkX, chunkZ);
+            }
+
             if (limit > 0) {
                 if (loc.getWorld().getNearbyEntities(blockLoc.clone().add(0.5, 1.5, 0.5), 1.5, 4.0, 1.5).stream()
                         .filter(e -> {

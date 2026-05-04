@@ -460,7 +460,14 @@ public class VanillaNPCImpl implements BedWarsNPC {
             villager.setInvulnerable(true);
             villager.setSilent(true);
             villager.setCollidable(false);
+            villager.setCanPickupItems(false);
             villager.setRemoveWhenFarAway(false);
+            villager.setGravity(false);
+
+            try {
+                villager.setAware(false);
+            } catch (NoSuchMethodError | Exception ignored) {
+            }
 
             if (type.equalsIgnoreCase("shop")) {
                 try {
@@ -489,7 +496,12 @@ public class VanillaNPCImpl implements BedWarsNPC {
                 living.setInvulnerable(true);
                 living.setSilent(true);
                 living.setCollidable(false);
+                living.setCanPickupItems(false);
                 living.setRemoveWhenFarAway(false);
+                try {
+                    living.setGravity(false);
+                } catch (NoSuchMethodError | Exception ignored) {
+                }
             }
             try {
                 entity.addScoreboardTag("bw_npc");

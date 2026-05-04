@@ -21,7 +21,14 @@ public class ScoreboardManager {
     private final BedWars plugin;
     private final Map<UUID, Scoreboard> boards = new ConcurrentHashMap<>();
     private final Map<UUID, List<String>> lastLines = new ConcurrentHashMap<>();
+    private final Set<String> hiddenNames = ConcurrentHashMap.newKeySet();
     private DateTimeFormatter dateFormatter;
+
+    public void hideName(String name) {
+        if (name != null) {
+            hiddenNames.add(name);
+        }
+    }
 
     public ScoreboardManager(BedWars plugin) {
         this.plugin = plugin;
@@ -54,6 +61,18 @@ public class ScoreboardManager {
             obj = board.registerNewObjective("bw_board", "dummy");
             obj.setDisplayName(color(title));
             obj.setDisplaySlot(DisplaySlot.SIDEBAR);
+        }
+
+        org.bukkit.scoreboard.Team npcTeam = board.getTeam("bw_npcs");
+        if (npcTeam == null) {
+            npcTeam = board.registerNewTeam("bw_npcs");
+            npcTeam.setOption(org.bukkit.scoreboard.Team.Option.NAME_TAG_VISIBILITY, org.bukkit.scoreboard.Team.OptionStatus.NEVER);
+            npcTeam.addEntry("");
+        }
+        for (String hidden : hiddenNames) {
+            if (!npcTeam.hasEntry(hidden)) {
+                npcTeam.addEntry(hidden);
+            }
         }
 
         List<String> linesTemplate;
@@ -107,10 +126,7 @@ public class ScoreboardManager {
         }
         lastLines.put(player.getUniqueId(), new ArrayList<>(currentLines));
 
-        for (String entry : board.getEntries()) {
-            board.resetScores(entry);
-        }
-
+        Set<String> newEntries = new HashSet<>();
         int score = currentLines.size();
         for (String line : currentLines) {
             String entry = line;
@@ -121,7 +137,14 @@ public class ScoreboardManager {
             if (entry.length() > 128)
                 entry = entry.substring(0, 128);
 
+            newEntries.add(entry);
             obj.getScore(entry).setScore(score--);
+        }
+
+        for (String entry : board.getEntries()) {
+            if (!newEntries.contains(entry)) {
+                board.resetScores(entry);
+            }
         }
 
         if (player.getScoreboard() != board) {

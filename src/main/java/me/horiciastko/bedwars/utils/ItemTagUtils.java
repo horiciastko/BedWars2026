@@ -66,6 +66,28 @@ public class ItemTagUtils {
         return null;
     }
 
+    public static void removeTag(ItemStack item, String key) {
+        if (item == null || !item.hasItemMeta())
+            return;
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null)
+            return;
+
+        if (HAS_PDC) {
+            PDCHandler.removeTag(meta, key);
+        } else {
+            if (!meta.hasLore())
+                return;
+            List<String> lore = meta.getLore();
+            if (lore == null)
+                return;
+            lore.removeIf(line -> line.startsWith("§d§e§a§d§b§e§e§f§" + key + ":"));
+            meta.setLore(lore);
+        }
+
+        item.setItemMeta(meta);
+    }
+
     private static class PDCHandler {
         public static void setTag(org.bukkit.inventory.meta.ItemMeta meta, String key, String value) {
             org.bukkit.NamespacedKey nsk = new org.bukkit.NamespacedKey(BedWars.getInstance(), key);
@@ -75,6 +97,11 @@ public class ItemTagUtils {
         public static String getTag(org.bukkit.inventory.meta.ItemMeta meta, String key) {
             org.bukkit.NamespacedKey nsk = new org.bukkit.NamespacedKey(BedWars.getInstance(), key);
             return meta.getPersistentDataContainer().get(nsk, org.bukkit.persistence.PersistentDataType.STRING);
+        }
+
+        public static void removeTag(org.bukkit.inventory.meta.ItemMeta meta, String key) {
+            org.bukkit.NamespacedKey nsk = new org.bukkit.NamespacedKey(BedWars.getInstance(), key);
+            meta.getPersistentDataContainer().remove(nsk);
         }
     }
 }

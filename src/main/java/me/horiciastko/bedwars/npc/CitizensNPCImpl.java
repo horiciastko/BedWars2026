@@ -19,6 +19,7 @@ public class CitizensNPCImpl implements BedWarsNPC {
     private final BedWars plugin;
     private final String type;
     private NPC npc;
+    private int citizensNpcId = -1;
 
     public CitizensNPCImpl(BedWars plugin, String type) {
         this.plugin = plugin;
@@ -28,6 +29,7 @@ public class CitizensNPCImpl implements BedWarsNPC {
     @Override
     public void spawn(Location location) {
         String title = plugin.getNpcManager().getConfig().getString("types." + type + ".title", type);
+        title = org.bukkit.ChatColor.translateAlternateColorCodes('&', title);
         String skin = plugin.getNpcManager().getConfig().getString("types." + type + ".skin", "");
         String entityTypeStr = plugin.getNpcManager().getConfig().getString("types." + type + ".entity-type", "PLAYER");
 
@@ -39,8 +41,26 @@ public class CitizensNPCImpl implements BedWarsNPC {
                     .warning("Invalid entity type '" + entityTypeStr + "' for NPC " + type + ". Defaulting to PLAYER.");
         }
 
-        npc = CitizensAPI.getNPCRegistry().createNPC(entType, title);
-        npc.getOrAddTrait(LookClose.class).lookClose(true);
+        StringBuilder invisibleName = new StringBuilder();
+        String colorChars = "0123456789abcdef";
+        java.util.Random rand = new java.util.Random();
+        for (int i = 0; i < 8; i++) {
+            invisibleName.append("§").append(colorChars.charAt(rand.nextInt(colorChars.length())));
+        }
+        String npcName = invisibleName.toString();
+        plugin.getScoreboardManager().hideName(npcName);
+
+        npc = CitizensAPI.getNPCRegistry().createNPC(entType, npcName);
+        citizensNpcId = npc.getId();
+        plugin.getNpcManager().registerCitizensImpl(citizensNpcId, this);
+        npc.data().set("nameplate-visible", false);
+
+        LookClose lookClose = npc.getOrAddTrait(LookClose.class);
+        lookClose.lookClose(false);
+        try {
+            lookClose.setRange(0);
+        } catch (NoSuchMethodError | Exception ignored) {
+        }
 
         if (entType == EntityType.PLAYER && !skin.isEmpty()) {
             npc.getOrAddTrait(net.citizensnpcs.trait.SkinTrait.class).setSkinName(skin);
@@ -55,37 +75,140 @@ public class CitizensNPCImpl implements BedWarsNPC {
                 descriptionLines.add(s);
         }
 
-        if (!descriptionLines.isEmpty()) {
-
-            try {
-                net.citizensnpcs.trait.HologramTrait holo = npc
-                        .getOrAddTrait(net.citizensnpcs.trait.HologramTrait.class);
-                
-                holo.clear();
-                
-                for (String line : descriptionLines) {
-                    holo.addLine(line);
-                }
-            } catch (NoClassDefFoundError | Exception e) {
-                plugin.getLogger().warning("Could not add Hologram description to NPC (Trait not found or error).");
-            }
-        }
-
         npc.spawn(location);
+        
         if (npc.getEntity() != null) {
             try {
+                npc.getEntity().setGravity(false);
+            } catch (NoSuchMethodError | Exception ignored) {
+            }
+
+            if (entType == EntityType.VILLAGER && npc.getEntity() instanceof org.bukkit.entity.Villager) {
+                org.bukkit.entity.Villager villager = (org.bukkit.entity.Villager) npc.getEntity();
+                villager.setAI(false);
+                villager.setCanPickupItems(false);
+                try {
+                    villager.setAware(false);
+                } catch (NoSuchMethodError | Exception ignored) {
+                }
+                if (type.equalsIgnoreCase("shop")) {
+                    try {
+                        villager.setProfession(org.bukkit.entity.Villager.Profession.WEAPONSMITH);
+                    } catch (Exception ignored) {}
+                } else if (type.equalsIgnoreCase("upgrades")) {
+                    try {
+                        villager.setProfession(org.bukkit.entity.Villager.Profession.LIBRARIAN);
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            if (npc.getEntity() instanceof org.bukkit.entity.LivingEntity) {
+                org.bukkit.entity.LivingEntity living = (org.bukkit.entity.LivingEntity) npc.getEntity();
+                living.setAI(false);
+                living.setCanPickupItems(false);
+                living.setCollidable(false);
+                living.setSilent(true);
+                living.setRemoveWhenFarAway(false);
+                try {
+                    living.setInvulnerable(true);
+                } catch (NoSuchMethodError | Exception ignored) {
+                }
+            }
+            
+            try {
                 npc.getEntity().addScoreboardTag("bw_npc");
+                npc.getEntity().addScoreboardTag("bw_npc_type_" + type);
             } catch (NoSuchMethodError | Exception ignored) {
             }
             plugin.getNpcManager().registerEntity(npc.getEntity().getUniqueId(), this);
+            
+            spawnHologram(npc.getEntity(), title, descriptionLines);
         }
 
-        net.citizensnpcs.api.trait.Trait identifierTrait = new net.citizensnpcs.api.trait.Trait("bw_" + type) {};
-        npc.addTrait(identifierTrait);
+        // Persist a marker so Citizens saves it to disk — used by cleanupOrphanedNPCEntities
+        // on next server start to remove these NPCs before new ones are created.
+        // (Do NOT use an anonymous Trait here — Citizens cannot deserialize anonymous classes
+        //  and logs "The trait bw_xxx failed to load" every restart.)
+        npc.data().set("bw_npc", true);
+        npc.data().set("bw_npc_type", type);
+    }
+
+    private final java.util.List<org.bukkit.entity.ArmorStand> hologramLines = new java.util.ArrayList<>();
+
+    private void spawnHologram(org.bukkit.entity.Entity entity, String title, List<String> descriptionLines) {
+        double entityHeight = entity instanceof org.bukkit.entity.Player ? 1.8 : 1.95;
+        double lineHeight = 0.25;
+
+        Location holoLoc = entity.getLocation().clone().add(0, entityHeight + 0.3, 0);
+
+        if (title != null && !title.isEmpty()) {
+            for (int i = descriptionLines.size() - 1; i >= 0; i--) {
+                org.bukkit.entity.ArmorStand line = spawnHologramLine(holoLoc,
+                        org.bukkit.ChatColor.translateAlternateColorCodes('&', descriptionLines.get(i)));
+                hologramLines.add(line);
+                holoLoc = holoLoc.add(0, lineHeight, 0);
+            }
+
+            org.bukkit.entity.ArmorStand titleStand = spawnHologramLine(holoLoc, 
+                    org.bukkit.ChatColor.translateAlternateColorCodes('&', title));
+            hologramLines.add(titleStand);
+        }
+    }
+
+    private org.bukkit.entity.ArmorStand spawnHologramLine(Location location, String text) {
+        org.bukkit.entity.ArmorStand stand = (org.bukkit.entity.ArmorStand) location.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
+        stand.setVisible(false);
+        stand.setMarker(true);
+        stand.setCustomNameVisible(true);
+        stand.setCustomName(text);
+        stand.setGravity(false);
+        stand.setCanPickupItems(false);
+        try {
+            stand.addScoreboardTag("bw_hologram");
+            stand.addScoreboardTag("bw_npc_hologram");
+        } catch (NoSuchMethodError e) {
+        }
+        return stand;
+    }
+
+    public void respawnHologram(org.bukkit.entity.Entity entity) {
+        for (org.bukkit.entity.ArmorStand stand : hologramLines) {
+            if (stand != null && stand.isValid()) {
+                stand.remove();
+            }
+        }
+        hologramLines.clear();
+
+        String title = plugin.getNpcManager().getConfig().getString("types." + type + ".title", type);
+        title = org.bukkit.ChatColor.translateAlternateColorCodes('&', title);
+
+        List<String> descriptionLines = new java.util.ArrayList<>();
+        if (plugin.getNpcManager().getConfig().isList("types." + type + ".description")) {
+            descriptionLines = plugin.getNpcManager().getConfig().getStringList("types." + type + ".description");
+        } else {
+            String s = plugin.getNpcManager().getConfig().getString("types." + type + ".description", "");
+            if (!s.isEmpty()) descriptionLines.add(s);
+        }
+
+        spawnHologram(entity, title, descriptionLines);
+    }
+
+    public int getCitizensNpcId() {
+        return citizensNpcId;
     }
 
     @Override
     public void remove() {
+        if (citizensNpcId >= 0) {
+            plugin.getNpcManager().unregisterCitizensImpl(citizensNpcId);
+        }
+        for (org.bukkit.entity.ArmorStand stand : hologramLines) {
+            if (stand != null && stand.isValid()) {
+                stand.remove();
+            }
+        }
+        hologramLines.clear();
+
         if (npc != null) {
             if (npc.getEntity() != null) {
                 plugin.getNpcManager().unregisterEntity(npc.getEntity().getUniqueId());

@@ -169,7 +169,7 @@ public class VisualizationManager {
             String teamColorStr = (team.getColor() != null ? team.getColor().toString() : "§f");
 
             if (team.isEliminated()) {
-                String line = elimLine1.replace("%team%", team.getName())
+                String line = elimLine1.replace("%team%", team.getDisplayName())
                         .replace("%teamColor%", teamColorStr);
                 ArmorStand as = createGameArmorStand(team.getBedLocation(), line);
                 if (as != null)
@@ -182,11 +182,11 @@ public class VisualizationManager {
 
             String l1 = teamLine1.replace("%status%", status)
                     .replace("%teamColor%", teamColorStr)
-                    .replace("%team%", team.getName());
+                    .replace("%team%", team.getDisplayName());
 
             String l2 = teamLine2.replace("%subtitle%", subtitle)
                     .replace("%teamColor%", teamColorStr)
-                    .replace("%team%", team.getName());
+                    .replace("%team%", team.getDisplayName());
 
             ArmorStand as1 = createGameArmorStand(team.getBedLocation(), l1);
             ArmorStand as2 = createGameArmorStand(team.getBedLocation().clone().add(0, -0.25, 0), l2);

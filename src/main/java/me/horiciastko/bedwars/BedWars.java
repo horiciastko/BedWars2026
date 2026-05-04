@@ -126,6 +126,7 @@ public class BedWars extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new LobbyListener(this), this);
         getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.LobbyItemListener(), this);
         getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.GameListener(), this);
+        getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.ProjectileListener(), this);
         getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.SelectionWandListener(this),
                 this);
         getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.NPCListener(this), this);
@@ -161,6 +162,6 @@ public class BedWars extends JavaPlugin {
         if (databaseManager != null) {
             databaseManager.close();
         }
-        getLogger().info("[BedWars] Plugin disabled!");
+        getLogger().info("Plugin disabled!");
     }
 }

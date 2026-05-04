@@ -112,6 +112,17 @@ public class WorldSelectorGUI extends BaseGUI {
 
         if (targetWorld != null) {
             player.teleport(targetWorld.getHighestBlockAt(targetWorld.getSpawnLocation()).getLocation().add(0, 1, 0));
+            // Create initial backup if one does not exist yet for this world
+            final String worldNameForBackup = worldName;
+            org.bukkit.Bukkit.getScheduler().runTaskAsynchronously(me.horiciastko.bedwars.BedWars.getInstance(), () -> {
+                if (!me.horiciastko.bedwars.utils.WorldBackupUtils.hasBackup(worldNameForBackup)) {
+                    boolean ok = me.horiciastko.bedwars.utils.WorldBackupUtils.createBackup(worldNameForBackup);
+                    if (ok) {
+                        me.horiciastko.bedwars.BedWars.getInstance().getLogger()
+                                .info("Created initial world backup for: " + worldNameForBackup);
+                    }
+                }
+            });
         }
 
         player.closeInventory();
