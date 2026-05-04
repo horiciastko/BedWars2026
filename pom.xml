@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>me.horiciastko</groupId>
     <artifactId>bedwars</artifactId>
-    <version>BETA 1.0.5</version>
+    <version>BETA 1.1</version>
     <name>BedWars</name>
 
     <properties>
@@ -193,6 +193,19 @@
             <artifactId>lombok</artifactId>
             <version>1.18.30</version>
             <scope>provided</scope>
+        </dependency>
+
+        <!-- Minestom -->
+        <dependency>
+            <groupId>net.minestom</groupId>
+            <artifactId>minestom</artifactId>
+            <version>2026.02.19-1.21.11</version>
+        </dependency>
+        <dependency>
+            <groupId>net.minestom</groupId>
+            <artifactId>testing</artifactId>
+            <version>2026.02.19-1.21.11</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
