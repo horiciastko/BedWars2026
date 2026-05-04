@@ -1,0 +1,153 @@
+############################################################
+#                                                          #
+#                 Ulepszenia Drużyn BedWars                #
+#                                                          #
+############################################################
+
+npc-name: "&b&lULEPSZENIA"
+
+upgrades:
+  sharpness:
+    name: "&cNaostrzone Miecze"
+    icon: IRON_SWORD
+    slot: 10
+    max-level: 1
+    tiers:
+      1:
+        cost: 4
+        currency: DIAMOND
+        desc: "&7Twoja drużyna ma stałą &cOstrość I"
+        desc2: "&7na wszystkich mieczach!"
+  protection:
+    name: "&aWzmocniona Zbroja"
+    icon: IRON_CHESTPLATE
+    slot: 11
+    max-level: 4
+    tiers:
+      1:
+        cost: 2
+        currency: DIAMOND
+        desc: "&7Twoja drużyna ma stałą &aOchronę I"
+        desc2: "&7na całej zbroi!"
+      2:
+        cost: 4
+        currency: DIAMOND
+        desc: "&7Twoja drużyna ma stałą &aOchronę II"
+        desc2: "&7na całej zbroi!"
+      3:
+        cost: 8
+        currency: DIAMOND
+        desc: "&7Twoja drużyna ma stałą &aOchronę III"
+        desc2: "&7na całej zbroi!"
+      4:
+        cost: 16
+        currency: DIAMOND
+        desc: "&7Twoja drużyna ma stałą &aOchronę IV"
+        desc2: "&7na całej zbroi!"
+  haste:
+    name: "&eManiacki Górnik"
+    icon: GOLDEN_PICKAXE
+    slot: 12
+    max-level: 2
+    tiers:
+      1:
+        cost: 2
+        currency: DIAMOND
+        desc: "&7Twoja drużyna ma stałe &ePośpiech I&7!"
+      2:
+        cost: 4
+        currency: DIAMOND
+        desc: "&7Twoja drużyna ma stałe &ePośpiech II&7!"
+  forge:
+    name: "&dŻelazna Kuźnia"
+    icon: FURNACE
+    slot: 13
+    max-level: 4
+    tiers:
+      1:
+        cost: 2
+        currency: DIAMOND
+        desc: "&7Zwiększa szybkość generowania &fŻelaza &7i &6Złota"
+        desc2: "&7o &a50%&7!"
+      2:
+        cost: 4
+        currency: DIAMOND
+        desc: "&7Zwiększa szybkość generowania &fŻelaza &7i &6Złota"
+        desc2: "&7o &a100%&7!"
+      3:
+        cost: 6
+        currency: DIAMOND
+        desc: "&7Generuj &2Szmaragdy &7w swojej bazie!"
+      4:
+        cost: 8
+        currency: DIAMOND
+        desc: "&7Zwiększa szybkość generowania &bwszystkich zasobów"
+        desc2: "&7o &a200%&7!"
+  heal_pool:
+    name: "&bBasen Uzdrowienia"
+    icon: BEACON
+    slot: 14
+    max-level: 1
+    tiers:
+      1:
+        cost: 1
+        currency: DIAMOND
+        desc: "&7Regeneruje zdrowie wszystkim członkom"
+        desc2: "&7drużyny przy bazie!"
+  dragon:
+    name: "&6Wzmocnienie Smoka"
+    icon: DRAGON_EGG
+    slot: 15
+    max-level: 1
+    tiers:
+      1:
+        cost: 5
+        currency: DIAMOND
+        desc: "&7Twoja drużyna będzie miała &62 Smoki &7zamiast"
+        desc2: "&71 w Nagłej Śmierci!"
+  traps:
+    name: "&cTo Pułapka!"
+    icon: LEATHER
+    slot: 16
+    max-level: 1
+    tiers:
+      1:
+        cost: 1
+        currency: DIAMOND
+        desc: "&7Kliknij aby kupić pułapkę dla swojej bazy!"
+
+trap-settings:
+  base-cost: 1
+  increment-cost: 1
+  currency: DIAMOND
+  queue-limit: 3
+
+trap-types:
+  blindness:
+    name: "&cPułapka Oślepienia"
+    icon: TRIPWIRE_HOOK
+    slot: 10
+    desc: "&7Nakłada &8Oślepienie &7i &8Spowolnienie"
+    desc2: "&7na &e8 sekund&7."
+    effect: "BLINDNESS:8:1,SLOW:8:1"
+  counter_offensive:
+    name: "&cPułapka Kontrataku"
+    icon: FEATHER
+    slot: 11
+    desc: "&7Daje &aSzybkość II &7na &e15 sekund"
+    desc2: "&7sojusznikom przy bazie."
+    effect: "SPEED:15:2"
+  alarm:
+    name: "&cPułapka Alarmowa"
+    icon: REDSTONE_TORCH
+    slot: 12
+    desc: "&7Odkrywa &f&lNIEWIDZIALNYCH &7graczy"
+    desc2: "&7oraz alarmuje twoją drużynę."
+    effect: "ALARM"
+  miner_fatigue:
+    name: "&cPułapka Zmęczenia Górnika"
+    icon: IRON_PICKAXE
+    slot: 13
+    desc: "&7Nakłada &8Zmęczenie Górnika &7na &e10 sekund"
+    desc2: "&7wrogom wchodzącym do twojej bazy."
+    effect: "SLOW_DIGGING:10:1"

@@ -1,0 +1,547 @@
+############################################################
+#                                                          #
+#                    Sklep Przedmiotów BedWars             #
+#                                                          #
+############################################################
+
+shop-title: "&8Sklep Przedmiotów"
+
+categories:
+  quick_buy:
+    name: "&aSzybkie Zakupy"
+    slot: 0
+    icon: NETHER_STAR
+  blocks:
+    name: "&aBloki"
+    slot: 1
+    icon: TERRACOTTA
+  melee:
+    name: "&aBroń Biała"
+    slot: 2
+    icon: GOLDEN_SWORD
+  armor:
+    name: "&aZbroja"
+    slot: 3
+    icon: CHAINMAIL_BOOTS
+  tools:
+    name: "&aNarzędzia"
+    slot: 4
+    icon: STONE_PICKAXE
+  ranged:
+    name: "&aBroń Dystansowa"
+    slot: 5
+    icon: BOW
+  potions:
+    name: "&aMiksturary"
+    slot: 6
+    icon: BREWING_STAND
+  utility:
+    name: "&aNarzędzia Specjalne"
+    slot: 7
+    icon: TNT
+
+sections:
+  quick_buy:
+    items:
+      wool:
+        material: WHITE_WOOL
+        name: "&fWełna"
+        amount: 16
+        cost: 4
+        currency: IRON_INGOT
+        slot: 19
+        lore:
+          - "&7Niezbędna do budowania mostów"
+          - "&7i szybkiej obrony bazy."
+      stone_sword:
+        material: STONE_SWORD
+        name: "&fKamienny Miecz"
+        amount: 1
+        cost: 10
+        currency: IRON_INGOT
+        slot: 20
+        lore:
+          - "&7Niezawodna broń do walki"
+          - "&7w początkowej fazie gry."
+      chainmail:
+        material: CHAINMAIL_BOOTS
+        name: "&fStała Kolczuga"
+        amount: 1
+        cost: 40
+        currency: IRON_INGOT
+        slot: 21
+        lore:
+          - "&7Lepsza ochrona która zostaje"
+          - "&7do końca gry."
+      bow:
+        material: BOW
+        name: "&fStandardowy Łuk"
+        amount: 1
+        cost: 12
+        currency: GOLD_INGOT
+        slot: 23
+        lore:
+          - "&7Trzymaj wrogów"
+          - "&7w bezpiecznej odległości."
+      speed:
+        material: POTION
+        name: "&fSzybkość II (45 Sekund)"
+        amount: 1
+        cost: 1
+        currency: EMERALD
+        slot: 24
+        lore:
+          - "&7Poruszaj się z niewiarygodną"
+          - "&7prędkością i manewruj wrogami."
+      tnt:
+        material: TNT
+        amount: 1
+        cost: 4
+        currency: GOLD_INGOT
+        slot: 25
+        lore:
+          - "&7Najlepsze narzędzie do"
+          - "&7przełamywania obrony wroga."
+      wood:
+        material: OAK_PLANKS
+        amount: 16
+        cost: 4
+        currency: GOLD_INGOT
+        slot: 28
+        lore:
+          - "&7Wytrzymały materiał budowlany"
+          - "&7odporny na ogniste kule."
+      iron_sword:
+        material: IRON_SWORD
+        name: "&fŻelazny Miecz"
+        amount: 1
+        cost: 7
+        currency: GOLD_INGOT
+        slot: 29
+        lore:
+          - "&7Większe obrażenia w poważnych"
+          - "&7starciach bojowych."
+      iron_armor:
+        material: IRON_BOOTS
+        name: "&fStała Żelazna Zbroja"
+        amount: 1
+        cost: 12
+        currency: GOLD_INGOT
+        slot: 30
+        lore:
+          - "&7Mocna ochrona w najtrudniejszych"
+          - "&7bitwach."
+      shears:
+        material: SHEARS
+        name: "&fStałe Nożyce"
+        amount: 1
+        cost: 20
+        currency: IRON_INGOT
+        slot: 31
+        lore:
+          - "&7Szybko niszcz wełniane"
+          - "&7mosty wroga."
+      arrows:
+        material: ARROW
+        name: "&fStrzały"
+        amount: 8
+        cost: 2
+        currency: GOLD_INGOT
+        slot: 32
+        lore:
+          - "&7Amunicja do twoich łuków."
+      jump:
+        material: POTION
+        name: "&fSkakanie V (45 Sekund)"
+        amount: 1
+        cost: 1
+        currency: EMERALD
+        slot: 33
+        lore:
+          - "&7Przeskakuj mury i obrony"
+          - "&7z łatwością."
+      water_bucket:
+        material: WATER_BUCKET
+        name: "&bWiadro z Wodą"
+        amount: 1
+        cost: 3
+        currency: GOLD_INGOT
+        slot: 34
+        lore:
+          - "&7Spowolnij wrogów i"
+          - "&7zapobiegnij obrażeniom od upadku."
+
+  blocks:
+    items:
+      wool:
+        material: WHITE_WOOL
+        name: "&fWełna"
+        amount: 16
+        cost: 4
+        currency: IRON_INGOT
+        slot: 19
+        lore:
+          - "&7Podstawowy blok budowlany."
+      clay:
+        material: TERRACOTTA
+        amount: 16
+        cost: 12
+        currency: IRON_INGOT
+        slot: 20
+        lore:
+          - "&7Solidna obrona przeciwko"
+          - "&7atakom wroga."
+      glass:
+        material: GLASS
+        amount: 4
+        cost: 12
+        currency: IRON_INGOT
+        slot: 21
+        lore:
+          - "&7Całkowicie odporne na"
+          - "&7eksplozje TNT!"
+      end_stone:
+        material: END_STONE
+        amount: 16
+        cost: 24
+        currency: IRON_INGOT
+        slot: 22
+        lore:
+          - "&7Bardzo trudne do rozbicia"
+          - "&7bez odpowiednich narzędzi."
+      ladders:
+        material: LADDER
+        amount: 16
+        cost: 4
+        currency: IRON_INGOT
+        slot: 23
+        lore:
+          - "&7Narzędzie do wspinaczki."
+      wood:
+        material: OAK_PLANKS
+        amount: 16
+        cost: 4
+        currency: GOLD_INGOT
+        slot: 24
+        lore:
+          - "&7Premia ochrona i"
+          - "&7wsparcie strukturalne."
+      obsidian:
+        material: OBSIDIAN
+        amount: 4
+        cost: 4
+        currency: EMERALD
+        slot: 25
+        lore:
+          - "&7Najlepsza obrona."
+          - "&7Wymaga diamentowego kilofa."
+  
+  melee:
+    items:
+      stone_sword:
+        material: STONE_SWORD
+        name: "&fKamienny Miecz"
+        amount: 1
+        cost: 10
+        currency: IRON_INGOT
+        slot: 19
+        lore:
+          - "&7Wystarczająco ostry na"
+          - "&7wczesne rajdy."
+      iron_sword:
+        material: IRON_SWORD
+        name: "&fŻelazny Miecz"
+        amount: 1
+        cost: 7
+        currency: GOLD_INGOT
+        slot: 20
+        lore:
+          - "&7Znaczne ulepszenie obrażeń."
+      diamond_sword:
+        material: DIAMOND_SWORD
+        name: "&bDiamentowy Miecz"
+        amount: 1
+        cost: 4
+        currency: EMERALD
+        slot: 21
+        lore:
+          - "&7Szczyt mocy walki wręcz."
+      kb_stick:
+        material: STICK
+        name: "&fPatyk Odrzutu"
+        amount: 1
+        cost: 10
+        currency: GOLD_INGOT
+        slot: 22
+        lore:
+          - "&7Zepchnij wrogów w pustkę."
+
+  armor:
+    items:
+      chainmail:
+        material: CHAINMAIL_BOOTS
+        name: "&fStała Kolczuga"
+        amount: 1
+        cost: 40
+        currency: IRON_INGOT
+        slot: 19
+        lore:
+          - "&7Zwiększona ochrona."
+      iron:
+        material: IRON_BOOTS
+        name: "&fStała Żelazna Zbroja"
+        amount: 1
+        cost: 12
+        currency: GOLD_INGOT
+        slot: 20
+        lore:
+          - "&7Znaczna wytrzymałość."
+      diamond:
+        material: DIAMOND_BOOTS
+        name: "&bStała Diamentowa Zbroja"
+        amount: 1
+        cost: 6
+        currency: EMERALD
+        slot: 21
+        lore:
+          - "&7Niezniszczalny pancerz."
+
+  tools:
+    items:
+      shears:
+        material: SHEARS
+        name: "&fStałe Nożyce"
+        amount: 1
+        cost: 20
+        currency: IRON_INGOT
+        slot: 19
+        lore:
+          - "&7Przerzynaj wełniane mosty."
+      pickaxe:
+        name: "&fKilof (Tier %tier%)"
+        slot: 20
+        tiers:
+          1:
+            material: WOODEN_PICKAXE
+            name: "&fDrewniany Kilof"
+            cost: 10
+            currency: IRON_INGOT
+            enchantments:
+              DIG_SPEED: 1
+            lore:
+              - "&7Wydajność I"
+          2:
+            material: STONE_PICKAXE
+            name: "&fKamienny Kilof"
+            cost: 10
+            currency: IRON_INGOT
+            enchantments:
+              DIG_SPEED: 1
+            lore:
+              - "&7Wydajność I"
+          3:
+            material: IRON_PICKAXE
+            name: "&fŻelazny Kilof"
+            cost: 3
+            currency: GOLD_INGOT
+            enchantments:
+              DIG_SPEED: 2
+            lore:
+              - "&7Wydajność II"
+          4:
+            material: DIAMOND_PICKAXE
+            name: "&bDiamentowy Kilof"
+            cost: 6
+            currency: GOLD_INGOT
+            enchantments:
+              DIG_SPEED: 3
+            lore:
+              - "&7Wydajność III"
+      axe:
+        name: "&fSiekiera (Tier %tier%)"
+        slot: 21
+        tiers:
+          1:
+            material: WOODEN_AXE
+            name: "&fDrewniana Siekiera"
+            cost: 10
+            currency: IRON_INGOT
+            enchantments:
+              DIG_SPEED: 1
+            lore:
+              - "&7Wydajność I"
+          2:
+            material: STONE_AXE
+            name: "&fKamienna Siekiera"
+            cost: 10
+            currency: IRON_INGOT
+            enchantments:
+              DIG_SPEED: 1
+            lore:
+              - "&7Wydajność I"
+          3:
+            material: IRON_AXE
+            name: "&fŻelazna Siekiera"
+            cost: 3
+            currency: GOLD_INGOT
+            enchantments:
+              DIG_SPEED: 2
+            lore:
+              - "&7Wydajność II"
+          4:
+            material: DIAMOND_AXE
+            name: "&bDiamentowa Siekiera"
+            cost: 6
+            currency: GOLD_INGOT
+            enchantments:
+              DIG_SPEED: 3
+            lore:
+              - "&7Wydajność III"
+
+  ranged:
+    items:
+      arrows:
+        material: ARROW
+        name: "&fStrzały"
+        amount: 8
+        cost: 2
+        currency: GOLD_INGOT
+        slot: 19
+      bow:
+        material: BOW
+        name: "&fStandardowy Łuk"
+        amount: 1
+        cost: 12
+        currency: GOLD_INGOT
+        slot: 20
+      power_bow:
+        material: BOW
+        name: "&bŁuk Mocy (Moc I)"
+        amount: 1
+        cost: 24
+        currency: GOLD_INGOT
+        slot: 21
+      punch_bow:
+        material: BOW
+        name: "&5Łuk Odrzutu (Moc I, Odrzut I)"
+        amount: 1
+        cost: 6
+        currency: EMERALD
+        slot: 22
+
+  potions:
+    items:
+      speed:
+        material: POTION
+        name: "&fSzybkość II (45s)"
+        amount: 1
+        cost: 1
+        currency: EMERALD
+        slot: 19
+      jump:
+        material: POTION
+        name: "&fSkakanie V (45s)"
+        amount: 1
+        cost: 1
+        currency: EMERALD
+        slot: 20
+      invisibility:
+        material: POTION
+        name: "&fNiewidzialność (30s)"
+        amount: 1
+        cost: 2
+        currency: EMERALD
+        slot: 21
+
+  utility:
+    items:
+      gapple:
+        material: GOLDEN_APPLE
+        name: "&eZłote Jabłko"
+        amount: 1
+        cost: 3
+        currency: GOLD_INGOT
+        slot: 19
+      bedbug:
+        material: SNOWBALL
+        name: "&cPrzywoływacz Robaków"
+        amount: 1
+        cost: 40
+        currency: IRON_INGOT
+        slot: 20
+      dream_defender:
+        material: POLAR_BEAR_SPAWN_EGG
+        name: "&bObrońca Snów"
+        amount: 1
+        cost: 120
+        currency: IRON_INGOT
+        slot: 21
+      fireball:
+        material: FIRE_CHARGE
+        name: "&6Ognista Kula"
+        amount: 1
+        cost: 40
+        currency: IRON_INGOT
+        slot: 22
+      tnt:
+        material: TNT
+        name: "&cTNT"
+        amount: 1
+        cost: 4
+        currency: GOLD_INGOT
+        slot: 23
+      ender_pearl:
+        material: ENDER_PEARL
+        name: "&5Perła Endera"
+        amount: 1
+        cost: 4
+        currency: EMERALD
+        slot: 24
+      tracker:
+        material: COMPASS
+        name: "&fŚledzenie Graczy"
+        amount: 1
+        cost: 2
+        currency: EMERALD
+        slot: 25
+        lore:
+          - "&7Kliknij PPM aby śledzić"
+          - "&7najbliższego wroga!"
+      bridge_egg:
+        material: EGG
+        name: "&fJajko Mostu"
+        amount: 1
+        cost: 3
+        currency: EMERALD
+        slot: 28
+      milk:
+        material: MILK_BUCKET
+        name: "&fMagiczne Mleko"
+        amount: 1
+        cost: 4
+        currency: GOLD_INGOT
+        slot: 29
+      sponge:
+        material: SPONGE
+        name: "&eGąbka (x4)"
+        amount: 4
+        cost: 3
+        currency: GOLD_INGOT
+        slot: 30
+      tower:
+        material: CHEST
+        name: "&fWyskakująca Wieża"
+        amount: 1
+        cost: 24
+        currency: IRON_INGOT
+        slot: 31
+      ender_dragon:
+        material: DRAGON_EGG
+        name: "&5Smok Kresu"
+        amount: 1
+        cost: 4
+        currency: EMERALD
+        slot: 32
+        lore:
+          - "&7Przywołuje Smoka Kresu, który"
+          - "&7atakuje wrogie drużyny i ich łóżka!"

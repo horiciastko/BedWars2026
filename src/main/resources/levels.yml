@@ -1,0 +1,78 @@
+############################################################
+#                                                          #
+#              BedWars Leveling & XP System                #
+#                                                          #
+############################################################
+
+# --- XP Rewards for Actions ---
+# Configure how much XP players get for each action
+xp-rewards:
+  kill: 5
+  final-kill: 10
+  bed-broken: 25
+  win: 50
+  loss: 5
+
+# --- Level Requirements ---
+# Configure XP requirements for each level
+# You can use two methods:
+# 1. Formula-based (recommended for high levels)
+# 2. Manual configuration (for custom progression)
+
+# Use formula for level calculation
+use-formula: true
+
+# Formula settings (only if use-formula: true)
+# XP required = base * level^exponent + (base * multiplier * level)
+# Example: 500 * level^2 + 500 * level
+formula:
+  base: 100
+  exponent: 2.0
+  multiplier: 1.0 
+  level-multiplier: 1.10
+
+
+manual-levels:
+  1: 0
+  2: 100
+  3: 210
+  4: 331
+  5: 464
+  6: 610
+  7: 771
+  8: 948
+  9: 1143
+  10: 1357
+  11: 1593
+  15: 3000
+  20: 5000
+  25: 8000
+  30: 12000
+  40: 20000
+  50: 35000
+  75: 75000
+  100: 150000
+
+ranks:
+  1: "&7Beginner"
+  5: "&fNovice"
+  10: "&a&lIntermediate"
+  15: "&2&lSkilled"
+  20: "&e&lProficient"
+  25: "&b&lAdvanced"
+  30: "&9&lExpert"
+  40: "&3&lMaster"
+  50: "&5&lElite"
+  60: "&d&lChampion"
+  75: "&c&lLegend"
+  100: "&6&lMythic"
+  150: "&4&lGod"
+  200: "&c&l&kX&r &4&lDEMIGOD &c&l&kX"
+prestige:
+  enabled: false
+  max-prestige: 10
+  level-required: 100
+  rewards:
+    1:
+      - "eco give %player% 10000"
+      - "give %player% diamond 64"

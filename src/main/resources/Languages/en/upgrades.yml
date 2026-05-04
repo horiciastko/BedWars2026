@@ -1,0 +1,153 @@
+############################################################
+#                                                          #
+#                 BedWars Team Upgrades                    #
+#                                                          #
+############################################################
+
+npc-name: "&b&lUPGRADES"
+
+upgrades:
+  sharpness:
+    name: "&cSharpened Swords"
+    icon: IRON_SWORD
+    slot: 10
+    max-level: 1
+    tiers:
+      1:
+        cost: 4
+        currency: DIAMOND
+        desc: "&7Your team has permanent &cSharpness I"
+        desc2: "&7on all swords!"
+  protection:
+    name: "&aReinforced Armor"
+    icon: IRON_CHESTPLATE
+    slot: 11
+    max-level: 4
+    tiers:
+      1:
+        cost: 2
+        currency: DIAMOND
+        desc: "&7Your team has permanent &aProtection I"
+        desc2: "&7on all armor!"
+      2:
+        cost: 4
+        currency: DIAMOND
+        desc: "&7Your team has permanent &aProtection II"
+        desc2: "&7on all armor!"
+      3:
+        cost: 8
+        currency: DIAMOND
+        desc: "&7Your team has permanent &aProtection III"
+        desc2: "&7on all armor!"
+      4:
+        cost: 16
+        currency: DIAMOND
+        desc: "&7Your team has permanent &aProtection IV"
+        desc2: "&7on all armor!"
+  haste:
+    name: "&eManiac Miner"
+    icon: GOLDEN_PICKAXE
+    slot: 12
+    max-level: 2
+    tiers:
+      1:
+        cost: 2
+        currency: DIAMOND
+        desc: "&7Your team has permanent &eHaste I&7!"
+      2:
+        cost: 4
+        currency: DIAMOND
+        desc: "&7Your team has permanent &eHaste II&7!"
+  forge:
+    name: "&dIron Forge"
+    icon: FURNACE
+    slot: 13
+    max-level: 4
+    tiers:
+      1:
+        cost: 2
+        currency: DIAMOND
+        desc: "&7Increases Spawn rate of &fIron &7and &6Gold"
+        desc2: "&7by &a50%&7!"
+      2:
+        cost: 4
+        currency: DIAMOND
+        desc: "&7Increases Spawn rate of &fIron &7and &6Gold"
+        desc2: "&7by &a100%&7!"
+      3:
+        cost: 6
+        currency: DIAMOND
+        desc: "&7Spawn &2Emeralds &7at your base!"
+      4:
+        cost: 8
+        currency: DIAMOND
+        desc: "&7Increases Spawn rate of &ball resources"
+        desc2: "&7by &a200%&7!"
+  heal_pool:
+    name: "&bHeal Pool"
+    icon: BEACON
+    slot: 14
+    max-level: 1
+    tiers:
+      1:
+        cost: 1
+        currency: DIAMOND
+        desc: "&7Regenerates health for all teammates"
+        desc2: "&7while near your base!"
+  dragon:
+    name: "&6Dragon Buff"
+    icon: DRAGON_EGG
+    slot: 15
+    max-level: 1
+    tiers:
+      1:
+        cost: 5
+        currency: DIAMOND
+        desc: "&7Your team will have &62 Dragons &7instead"
+        desc2: "&7of 1 in Sudden Death!"
+  traps:
+    name: "&cIt's a Trap!"
+    icon: LEATHER
+    slot: 16
+    max-level: 1
+    tiers:
+      1:
+        cost: 1
+        currency: DIAMOND
+        desc: "&7Click to purchase a trap for your base!"
+
+trap-settings:
+  base-cost: 1
+  increment-cost: 1
+  currency: DIAMOND
+  queue-limit: 3
+
+trap-types:
+  blindness:
+    name: "&cBlindness Trap"
+    icon: TRIPWIRE_HOOK
+    slot: 10
+    desc: "&7Inflict &8Blindness &7and &8Slowness"
+    desc2: "&7for &e8 seconds&7."
+    effect: "BLINDNESS:8:1,SLOW:8:1"
+  counter_offensive:
+    name: "&cCounter-Offensive Trap"
+    icon: FEATHER
+    slot: 11
+    desc: "&7Grants &aSpeed II &7for &e15 seconds"
+    desc2: "&7to allies near your base."
+    effect: "SPEED:15:2"
+  alarm:
+    name: "&cAlarm Trap"
+    icon: REDSTONE_TORCH
+    slot: 12
+    desc: "&7Reveals &f&lINVISIBLE &7players as well"
+    desc2: "&7as alerting your team."
+    effect: "ALARM"
+  miner_fatigue:
+    name: "&cMiner Fatigue Trap"
+    icon: IRON_PICKAXE
+    slot: 13
+    desc: "&7Inflict &8Mining Fatigue &7for &e10 seconds"
+    desc2: "&7to enemies who enter your base."
+    effect: "SLOW_DIGGING:10:1"

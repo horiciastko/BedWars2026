@@ -1,0 +1,70 @@
+############################################################
+#                                                          #
+#                BedWars NPC Configuration                 #
+#                                                          #
+############################################################
+
+# Global NPC Settings
+settings:
+  # Look speed for the 'LookClose' effect
+  look-speed: 5.0
+
+# NPC Types and their configurations
+# Format:
+#   <type-key>:
+#     title: "Top Line"
+#     description: "Bottom Line"
+#     entity-type: "PLAYER" or "VILLAGER"
+#     skin: "SkinName" (Only for PLAYER, attempts to load from network/Citizens cache)
+#     mode: "SOLO" (Optional, maps to arena mode for lobby joining)
+
+types:
+  # In-Game NPCs (Classic Hypixel style: Villagers with floaty text)
+  # Note: Citizens Villagers can have names, but descriptions might need HolographicDisplays or supported plugins.
+  # Citizens supports multiple lines in name or traits. We will simulate description if possible.
+  shop:
+    title: "&b&lITEM SHOP"
+    description: "&e&lCLICK TO OPEN"
+    entity-type: "VILLAGER"
+    skin: ""
+    
+  upgrades:
+    title: "&b&lTEAM UPGRADES"
+    description: "&e&lCLICK TO OPEN"
+    entity-type: "VILLAGER"
+    skin: ""
+
+  # Lobby Join NPCs 
+  solo:
+    title: "&a&lSOLO"
+    description: "&e&lCLICK TO PLAY"
+    entity-type: "PLAYER"
+    skin: "Steve"
+    mode: "SOLO"
+    
+  duo:
+    title: "&a&lDOUBLES"
+    description: "&e&lCLICK TO PLAY"
+    entity-type: "PLAYER"
+    skin: "Alex"
+    mode: "DUO"
+
+  trio:
+    title: "&a&l3v3v3v3"
+    description: "&e&lCLICK TO PLAY"
+    entity-type: "PLAYER"
+    skin: "TrioSkin"
+    mode: "TRIO"
+
+  quad:
+    title: "&a&l4v4v4v4"
+    description: "&e&lCLICK TO PLAY"
+    entity-type: "PLAYER"
+    skin: "QuadSkin"
+    mode: "SQUAD"
+
+  play:
+    title: "&a&lBEDWARS"
+    description: "&e&lCLICK TO PLAY"
+    entity-type: "PLAYER"
+    skin: "Steve"

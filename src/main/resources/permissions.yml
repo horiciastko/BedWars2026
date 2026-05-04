@@ -1,0 +1,28 @@
+############################################################
+#                                                          #
+#                 BedWars Permissions List                 #
+#                                                          #
+############################################################
+
+permissions:
+  # Administrative Permissions
+  bedwars.admin:
+    description: "Full administrator access to all plugin features and commands."
+    default: op
+
+  bedwars.setup:
+    description: "Ability to create, edit, and manage BedWars arenas."
+    default: op
+
+  # Gameplay Permissions
+  bedwars.command.rejoin:
+    description: "Allows the player to rejoin a game they recently disconnected from."
+    default: true
+
+  bedwars.command.reload:
+    description: "Allows the player to reload the plugin configuration."
+    default: op
+
+  bedwars.command.lang:
+    description: "Allows administrators to change the global language of the plugin."
+    default: op

@@ -1,0 +1,54 @@
+############################################################
+#                                                          #
+#                Konfiguracja NPC BedWars                  #
+#                                                          #
+############################################################
+
+# Ustawienia Globalne NPC
+settings:
+  # Prędkość patrzenia dla efektu 'LookClose'
+  look-speed: 5.0
+
+# Typy NPC i ich konfiguracja
+types:
+  # NPC w grze (klasyczny styl Hypixel: Wieśniacy z tekstem)
+  shop:
+    title: "&b&lSKLEP PRZEDMIOTÓW"
+    description: "&e&lKLIKNIJ ABY OTWORZYĆ"
+    entity-type: "VILLAGER"
+    skin: ""
+    
+  upgrades:
+    title: "&b&lULEPSZENIA DRUŻYNY"
+    description: "&e&lKLIKNIJ ABY OTWORZYĆ"
+    entity-type: "VILLAGER"
+    skin: ""
+
+  # NPC w Lobby do dołączania
+  solo:
+    title: "&a&lSOLO"
+    description: "&e&lKLIKNIJ ABY ZAGRAĆ"
+    entity-type: "PLAYER"
+    skin: "Steve"
+    mode: "SOLO"
+    
+  duo:
+    title: "&a&lDUO"
+    description: "&e&lKLIKNIJ ABY ZAGRAĆ"
+    entity-type: "PLAYER"
+    skin: "Alex"
+    mode: "DUO"
+    
+  trio:
+    title: "&a&l3v3v3v3"
+    description: "&e&lKLIKNIJ ABY ZAGRAĆ"
+    entity-type: "PLAYER"
+    skin: "Steve"
+    mode: "TRIO"
+    
+  squad:
+    title: "&a&l4v4v4v4"
+    description: "&e&lKLIKNIJ ABY ZAGRAĆ"
+    entity-type: "PLAYER"
+    skin: "Alex"
+    mode: "SQUAD"

@@ -1,0 +1,111 @@
+############################################################
+#                                                          #
+#                Konfiguracja Generatorów BedWars          #
+#                                                          #
+############################################################
+
+# --- Ustawienia Generatorów Globalnych (Diamenty/Szmaragdy) ---
+global_generators:
+  diamond:
+    name: "&b&lDIAMENT"
+    item: DIAMOND
+    block: DIAMOND_BLOCK
+  emerald:
+    name: "&2&lSZMARAGD"
+    item: EMERALD
+    block: EMERALD_BLOCK
+
+# --- Ustawienia Generatorów Drużynowych (Żelazo/Złoto) ---
+team_generators:
+  Default:
+    levels:
+      0:
+        iron: { item: IRON_INGOT, delay: 1.0, limit: 128 }
+        gold: { item: GOLD_INGOT, delay: 4.0, limit: 32 }
+      1:
+        iron: { item: IRON_INGOT, delay: 0.66, limit: 160 }
+        gold: { item: GOLD_INGOT, delay: 2.66, limit: 64 }
+      2:
+        iron: { item: IRON_INGOT, delay: 0.50, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 2.00, limit: 96 }
+      3:
+        iron: { item: IRON_INGOT, delay: 0.50, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 2.00, limit: 96 }
+        emerald: { item: EMERALD, delay: 10.0, limit: 4 }
+      4:
+        iron: { item: IRON_INGOT, delay: 0.33, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.33, limit: 96 }
+        emerald: { item: EMERALD, delay: 10.0, limit: 8 }
+
+  Solo:
+    levels:
+      0:
+        iron: { item: IRON_INGOT, delay: 1.0, limit: 128 }
+        gold: { item: GOLD_INGOT, delay: 4.0, limit: 32 }
+      1:
+        iron: { item: IRON_INGOT, delay: 0.66, limit: 160 }
+        gold: { item: GOLD_INGOT, delay: 2.66, limit: 64 }
+      2:
+        iron: { item: IRON_INGOT, delay: 0.50, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 2.00, limit: 96 }
+      3:
+        iron: { item: IRON_INGOT, delay: 0.50, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 2.00, limit: 96 }
+        emerald: { item: EMERALD, delay: 10.0, limit: 4 }
+      4:
+        iron: { item: IRON_INGOT, delay: 0.33, limit: 192 }
+        gold: { item: GOLD_INGOT, delay: 1.33, limit: 96 }
+        emerald: { item: EMERALD, delay: 10.0, limit: 8 }
+
+# --- Harmonogram Wydarzeń Gry ---
+# Określa kiedy zachodzą zmiany generatorów i specjalne wydarzenia
+events:
+  - name: "Diamond II"
+    time: 180 # 3 minuty w sekundach
+    type: "diamond_upgrade"
+    tier: 2
+  - name: "Emerald II"
+    time: 360 # 6 minut
+    type: "emerald_upgrade"
+    tier: 2
+  - name: "Diamond III"
+    time: 720 # 12 minut
+    type: "diamond_upgrade"
+    tier: 3
+  - name: "Emerald III"
+    time: 900 # 15 minut
+    type: "emerald_upgrade"
+    tier: 3
+  - name: "Bed Gone"
+    time: 1200 # 20 minut
+    type: "destroy_beds"
+  - name: "Sudden Death"
+    time: 1500 # 25 minut
+    type: "sudden_death"
+  - name: "Game End"
+    time: 1800 # 30 minut
+    type: "game_end"
+
+# --- Ustawienia Tieru Generatorów ---
+# Konfiguracja opóźnień generowania dla każdego poziomu
+diamond_tiers:
+  1:
+    delay: 30.0 # sekundy
+    hologram: "&b&lDIAMENT"
+  2:
+    delay: 20.0
+    hologram: "&b&lDIAMENT &7(Tier II)"
+  3:
+    delay: 15.0
+    hologram: "&b&lDIAMENT &7(Tier III)"
+
+emerald_tiers:
+  1:
+    delay: 60.0
+    hologram: "&2&lSZMARAGD"
+  2:
+    delay: 45.0
+    hologram: "&2&lSZMARAGD &7(Tier II)"
+  3:
+    delay: 30.0
+    hologram: "&2&lSZMARAGD &7(Tier III)"

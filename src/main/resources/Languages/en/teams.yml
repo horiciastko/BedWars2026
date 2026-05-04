@@ -1,0 +1,41 @@
+# BedWars Teams Configuration
+
+# You can add new teams here or change existing ones.
+# Internal Name: Unique identifier used in database (e.g. Red)
+# display_name: Name shown to players (e.g. Czerwony)
+# color: Bukkit ChatColor name (e.g. RED, BLUE, GOLD, etc.)
+# material: Wool material (e.g. RED_WOOL, LIGHT_BLUE_WOOL)
+
+teams:
+  Red:
+    display_name: "RED"
+    color: RED
+    material: RED_WOOL
+  Blue:
+    display_name: "BLUE"
+    color: BLUE
+    material: BLUE_WOOL
+  Green:
+    display_name: "GREEN"
+    color: GREEN
+    material: LIME_WOOL
+  Yellow:
+    display_name: "YELLOW"
+    color: YELLOW
+    material: YELLOW_WOOL
+  Aqua:
+    display_name: "AQUA"
+    color: AQUA
+    material: CYAN_WOOL
+  White:
+    display_name: "WHITE"
+    color: WHITE
+    material: WHITE_WOOL
+  Pink:
+    display_name: "PINK"
+    color: LIGHT_PURPLE
+    material: PINK_WOOL
+  Gray:
+    display_name: "GRAY"
+    color: DARK_GRAY
+    material: GRAY_WOOL
