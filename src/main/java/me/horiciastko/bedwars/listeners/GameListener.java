@@ -35,8 +35,23 @@ import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.EntityType;
 
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
 @SuppressWarnings("deprecation")
 public class GameListener implements Listener {
+
+    private final Set<UUID> hiddenArmorPlayers = new HashSet<>();
+
+    public GameListener() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                syncInvisibleArmorState();
+            }
+        }.runTaskTimer(BedWars.getInstance(), 1L, 20L);
+    }
 
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onBlockBreak(BlockBreakEvent event) {
@@ -185,6 +200,75 @@ public class GameListener implements Listener {
                 BedWars.getInstance().getScoreboardManager().updateScoreboard(p);
             }
         }
+    }
+
+    private void syncInvisibleArmorState() {
+        Set<UUID> currentlyHidden = new HashSet<>();
+
+        for (Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
+            if (!shouldHideArmor(player)) {
+                continue;
+            }
+
+            hideArmorForViewers(player);
+            currentlyHidden.add(player.getUniqueId());
+        }
+
+        Set<UUID> toReveal = new HashSet<>(hiddenArmorPlayers);
+        toReveal.removeAll(currentlyHidden);
+
+        for (UUID uuid : toReveal) {
+            Player player = org.bukkit.Bukkit.getPlayer(uuid);
+            if (player != null) {
+                showArmorForViewers(player);
+            }
+        }
+
+        hiddenArmorPlayers.clear();
+        hiddenArmorPlayers.addAll(currentlyHidden);
+    }
+
+    private boolean shouldHideArmor(Player player) {
+        if (player == null || !player.isOnline()) {
+            return false;
+        }
+
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        return arena != null
+                && arena.getState() == Arena.GameState.IN_GAME
+                && player.hasPotionEffect(org.bukkit.potion.PotionEffectType.INVISIBILITY);
+    }
+
+    private void hideArmorForViewers(Player target) {
+        ItemStack empty = new ItemStack(Material.AIR);
+        for (Player viewer : org.bukkit.Bukkit.getOnlinePlayers()) {
+            if (viewer.equals(target) || !viewer.getWorld().equals(target.getWorld())) {
+                continue;
+            }
+
+            viewer.sendEquipmentChange(target, EquipmentSlot.HEAD, empty);
+            viewer.sendEquipmentChange(target, EquipmentSlot.CHEST, empty);
+            viewer.sendEquipmentChange(target, EquipmentSlot.LEGS, empty);
+            viewer.sendEquipmentChange(target, EquipmentSlot.FEET, empty);
+        }
+    }
+
+    private void showArmorForViewers(Player target) {
+        org.bukkit.inventory.PlayerInventory inventory = target.getInventory();
+        for (Player viewer : org.bukkit.Bukkit.getOnlinePlayers()) {
+            if (viewer.equals(target) || !viewer.getWorld().equals(target.getWorld())) {
+                continue;
+            }
+
+            viewer.sendEquipmentChange(target, EquipmentSlot.HEAD, normalizeEquipment(inventory.getHelmet()));
+            viewer.sendEquipmentChange(target, EquipmentSlot.CHEST, normalizeEquipment(inventory.getChestplate()));
+            viewer.sendEquipmentChange(target, EquipmentSlot.LEGS, normalizeEquipment(inventory.getLeggings()));
+            viewer.sendEquipmentChange(target, EquipmentSlot.FEET, normalizeEquipment(inventory.getBoots()));
+        }
+    }
+
+    private ItemStack normalizeEquipment(ItemStack item) {
+        return item == null ? new ItemStack(Material.AIR) : item;
     }
 
     private boolean isBedBlock(org.bukkit.Location bedLoc, Block block) {
@@ -884,7 +968,36 @@ public class GameListener implements Listener {
         }
 
         ItemStack itemStack = event.getItem();
-        if (itemStack == null || !itemStack.hasItemMeta())
+        if (itemStack == null)
+            return;
+
+        if ((event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK)
+                && itemStack.getType() == Material.FIRE_CHARGE) {
+            event.setCancelled(true);
+            try {
+                event.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
+                event.setUseItemInHand(org.bukkit.event.Event.Result.DENY);
+            } catch (NoSuchMethodError ignored) {
+            }
+            if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
+                itemStack.setAmount(itemStack.getAmount() - 1);
+            }
+
+            org.bukkit.Location spawnLoc = player.getEyeLocation()
+                    .add(player.getEyeLocation().getDirection().multiply(1.0));
+            org.bukkit.entity.Fireball fireball = (org.bukkit.entity.Fireball) player.getWorld()
+                    .spawnEntity(spawnLoc, org.bukkit.entity.EntityType.FIREBALL);
+
+            fireball.setYield(2.5f);
+            fireball.setIsIncendiary(false);
+            fireball.setShooter(player);
+            fireball.setVelocity(player.getEyeLocation().getDirection().multiply(1.2));
+
+            player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GHAST_SHOOT, 1f, 1f);
+            return;
+        }
+
+        if (!itemStack.hasItemMeta())
             return;
 
         String special = me.horiciastko.bedwars.utils.ItemTagUtils.getTag(itemStack, "special_item");
@@ -892,24 +1005,7 @@ public class GameListener implements Listener {
             special = "";
 
         if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            if (itemStack.getType() == Material.FIRE_CHARGE) {
-                event.setCancelled(true);
-                if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
-                    itemStack.setAmount(itemStack.getAmount() - 1);
-                }
-
-                org.bukkit.Location spawnLoc = player.getEyeLocation()
-                        .add(player.getEyeLocation().getDirection().multiply(1.0));
-                org.bukkit.entity.Fireball fireball = (org.bukkit.entity.Fireball) player.getWorld()
-                        .spawnEntity(spawnLoc, org.bukkit.entity.EntityType.FIREBALL);
-
-                fireball.setYield(2.5f);
-                fireball.setIsIncendiary(false);
-                fireball.setShooter(player);
-                fireball.setVelocity(player.getEyeLocation().getDirection().multiply(1.2));
-
-                player.playSound(player.getLocation(), org.bukkit.Sound.ENTITY_GHAST_SHOOT, 1f, 1f);
-            } else if (special.equals("tower")) {
+            if (special.equals("tower")) {
                 if (event.getClickedBlock() == null)
                     return;
                     
