@@ -163,6 +163,10 @@ player-re-spawn-title: "&a&lRESPAWNED!"
 player-died-title: "&c&lYOU DIED!"
 player-died-subtitle: "&eRespawning in &c%time% &eseconds..."
 
+spectator-title: "&c&lELIMINATED"
+spectator-subtitle: "&7You are now spectating the game"
+spectator-message: "&7You have been eliminated. Use &efly &7to watch the remaining players."
+
 error-died-void-lobby: "&cYou were teleported to lobby because you died incorrectly!"
 void-teleport-lobby: "&eYou were teleported to lobby from the void!"
 error-spawn-not-set: "&c[Error] Spawn for team %team% is not set!"

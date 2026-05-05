@@ -27,7 +27,7 @@ database:
 server:
   ip: "play.yourserver.net"
   id: "1"
-  version: "1.1"
+  version: "1.1.0"
 
 # These appear above team beds to show their status.
 # Hologram text is defined in Languages/*/messages.yml (hologram-team-line1, hologram-team-line2, hologram-eliminated-line1)
@@ -44,7 +44,10 @@ game:
   
   # Visual & Technical
   remove-waiting-lobby: true
-  waiting-lobby-radius: 10
+  # Radius (in blocks) used to clear the waiting lobby structure when the game starts.
+  # Only applies when Lobby Remove Pos1/Pos2 are NOT set via /bw admin arena setup.
+  # For best results, set Pos1 and Pos2 in the arena setup GUI instead of relying on radius.
+  waiting-lobby-radius: 20
   void-y-level: -10 # Y level below which players die immediately
   
   # Explosion settings
@@ -54,14 +57,17 @@ game:
     jump-power: 2.5
     damage-enabled: false
     damage-amount: 2.0
+    team-damage-amount: 1.0 # Damage dealt to teammates (only when prevent-team-explosion-damage is false)
     timer-enabled: true
   fireball:
     jump-power: 2.0
     damage-enabled: true
     damage-amount: 4.0
+    team-damage-amount: 2.0 # Damage dealt to teammates (only when prevent-team-explosion-damage is false)
   
   # Combat & Protection
   prevent-own-mob-damage: true # Protect players from being attacked by their own golems/bedbugs
+  prevent-team-explosion-damage: true # Prevent TNT/fireball from damaging teammates (set to false to allow friendly explosion fire)
   
 # Language settings
 # Note: You can change this via /bw admin lang <iso>

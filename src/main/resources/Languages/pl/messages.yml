@@ -163,6 +163,10 @@ player-re-spawn-title: "&a&lODRODZENIE!"
 player-died-title: "&c&lZGINĄŁEŚ!"
 player-died-subtitle: "&eOdrodzenie za &c%time% &esekund..."
 
+spectator-title: "&c&lWYELIMINOWANY"
+spectator-subtitle: "&7Jesteś teraz widzem gry"
+spectator-message: "&7Zostałeś wyeliminowany. Możesz latać i obserwować pozostałych graczy."
+
 error-died-void-lobby: "&cZostałeś teleportowany do lobby ponieważ zginąłeś nieprawidłowo!"
 void-teleport-lobby: "&eZostałeś przeteleportowany do lobby z voidu!"
 error-spawn-not-set: "&c[Błąd] Punkt odrodzenia dla drużyny %team% nie jest ustawiony!"
