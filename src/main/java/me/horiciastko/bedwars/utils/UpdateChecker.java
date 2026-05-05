@@ -19,8 +19,8 @@ public class UpdateChecker implements Listener {
 
     private static final int SPIGOT_RESOURCE_ID = 132654;
     private static final String SPIGOT_DOWNLOAD_URL = "https://www.spigotmc.org/resources/" + SPIGOT_RESOURCE_ID + "/";
-    private static final String UPDATE_API_URL = "https://api.spiget.org/v2/resources/" + SPIGOT_RESOURCE_ID + "/updates/latest";
-    private static final Pattern TITLE_PATTERN = Pattern.compile("\"title\"\\s*:\\s*\"((?:\\\\.|[^\"])*)\"");
+    private static final String UPDATE_API_URL = "https://api.spiget.org/v2/resources/" + SPIGOT_RESOURCE_ID + "/versions/latest";
+    private static final Pattern TITLE_PATTERN = Pattern.compile("\"name\"\\s*:\\s*\"((?:\\\\\\.|[^\"])*)\"");
 
     private final BedWars plugin;
     private String latestVersion = null;
