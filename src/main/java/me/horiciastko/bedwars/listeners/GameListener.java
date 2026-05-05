@@ -53,6 +53,27 @@ public class GameListener implements Listener {
         }.runTaskTimer(BedWars.getInstance(), 1L, 20L);
     }
 
+    // Cancel fire-charge block ignitions inside BedWars arenas — prevents the vanilla
+    // "right-click block with fire charge = place fire" behaviour from triggering when
+    // the player actually wants to throw a fireball.
+    @EventHandler(priority = org.bukkit.event.EventPriority.HIGH)
+    public void onBlockIgnite(org.bukkit.event.block.BlockIgniteEvent event) {
+        if (event.getCause() != org.bukkit.event.block.BlockIgniteEvent.IgniteCause.FLINT_AND_STEEL) {
+            return;
+        }
+        // Fire charges share the FLINT_AND_STEEL cause when used on a block.
+        // Only cancel when a BedWars player triggers it to avoid interfering with
+        // flint-and-steel used outside game scope.
+        if (!(event.getIgnitingEntity() instanceof Player)) {
+            return;
+        }
+        Player player = (Player) event.getIgnitingEntity();
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
+        if (arena != null && arena.getState() == Arena.GameState.IN_GAME) {
+            event.setCancelled(true);
+        }
+    }
+
     @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
     public void onBlockBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
@@ -90,6 +111,10 @@ public class GameListener implements Listener {
 
         Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
         if (arena == null || arena.getState() != Arena.GameState.IN_GAME) {
+            // Allow OPs and admins to break blocks freely outside of a game.
+            if (player.hasPermission("bedwars.admin")) {
+                return;
+            }
             event.setCancelled(true);
             return;
         }
@@ -308,6 +333,10 @@ public class GameListener implements Listener {
 
         Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
         if (arena == null || arena.getState() != Arena.GameState.IN_GAME) {
+            // Allow OPs and admins to place blocks freely outside of a game.
+            if (player.hasPermission("bedwars.admin")) {
+                return;
+            }
             event.setCancelled(true);
             return;
         }
@@ -735,10 +764,11 @@ public class GameListener implements Listener {
     private boolean isBwPermanentItem(ItemStack item) {
         if (item == null || item.getType() == Material.AIR) return false;
         String name = item.getType().name();
+        // BOW is intentionally NOT in this list — players may freely store bows in chests.
         return name.equals("WOODEN_SWORD") || name.endsWith("_PICKAXE") || name.endsWith("_AXE")
                 || name.endsWith("_HELMET") || name.endsWith("_CHESTPLATE")
                 || name.endsWith("_LEGGINGS") || name.endsWith("_BOOTS")
-                || name.equals("SHEARS") || name.equals("BOW") || name.equals("STICK");
+                || name.equals("SHEARS") || name.equals("STICK");
     }
 
     private boolean handleWoodenSwordInventoryClick(InventoryClickEvent event, Player player) {
@@ -1297,6 +1327,39 @@ public class GameListener implements Listener {
         if (event instanceof org.bukkit.event.entity.EntityDamageByEntityEvent) {
             org.bukkit.event.entity.EntityDamageByEntityEvent edbe = (org.bukkit.event.entity.EntityDamageByEntityEvent) event;
 
+            // Friendly fire protection — cancel damage between teammates
+            {
+                boolean isExplosion = edbe.getDamager() instanceof org.bukkit.entity.TNTPrimed
+                        || edbe.getDamager() instanceof org.bukkit.entity.Fireball;
+                boolean preventExplosion = BedWars.getInstance().getConfig()
+                        .getBoolean("game.prevent-team-explosion-damage", true);
+
+                Player ffAttacker = null;
+                if (edbe.getDamager() instanceof Player) {
+                    ffAttacker = (Player) edbe.getDamager();
+                } else if (edbe.getDamager() instanceof org.bukkit.entity.Projectile) {
+                    org.bukkit.entity.Projectile proj = (org.bukkit.entity.Projectile) edbe.getDamager();
+                    if (proj.getShooter() instanceof Player) ffAttacker = (Player) proj.getShooter();
+                } else if (edbe.getDamager() instanceof org.bukkit.entity.TNTPrimed) {
+                    org.bukkit.entity.TNTPrimed tnt = (org.bukkit.entity.TNTPrimed) edbe.getDamager();
+                    if (tnt.getSource() instanceof Player) ffAttacker = (Player) tnt.getSource();
+                } else if (edbe.getDamager() instanceof org.bukkit.entity.Fireball) {
+                    org.bukkit.entity.Fireball fb = (org.bukkit.entity.Fireball) edbe.getDamager();
+                    if (fb.getShooter() instanceof Player) ffAttacker = (Player) fb.getShooter();
+                }
+
+                // For explosions, only block if config says so
+                boolean shouldCheck = !isExplosion || preventExplosion;
+                if (shouldCheck && ffAttacker != null && !ffAttacker.equals(player)) {
+                    Team atkTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, ffAttacker);
+                    Team vicTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, player);
+                    if (atkTeam != null && vicTeam != null && atkTeam.getName().equals(vicTeam.getName())) {
+                        event.setCancelled(true);
+                        return;
+                    }
+                }
+            }
+
             // Knockback stick: apply manual knockback in 1.21+ where KNOCKBACK enchant on sticks is ignored
             if (edbe.getDamager() instanceof Player) {
                 Player attacker = (Player) edbe.getDamager();
@@ -1324,9 +1387,31 @@ public class GameListener implements Listener {
 
                 boolean tntDmgEnabled = BedWars.getInstance().getConfig().getBoolean("game.tnt.damage-enabled", false);
                 double tntDmg = BedWars.getInstance().getConfig().getDouble("game.tnt.damage-amount", 2.0);
+                double tntTeamDmg = BedWars.getInstance().getConfig().getDouble("game.tnt.team-damage-amount", 1.0);
                 boolean fireballDmgEnabled = BedWars.getInstance().getConfig()
                         .getBoolean("game.fireball.damage-enabled", true);
                 double fireballDmg = BedWars.getInstance().getConfig().getDouble("game.fireball.damage-amount", 4.0);
+                double fireballTeamDmg = BedWars.getInstance().getConfig().getDouble("game.fireball.team-damage-amount", 2.0);
+
+                // Check if victim is a teammate of the explosion source
+                boolean isTeammate = false;
+                {
+                    Player expSource = null;
+                    if (edbe.getDamager() instanceof org.bukkit.entity.TNTPrimed) {
+                        org.bukkit.entity.TNTPrimed tnt = (org.bukkit.entity.TNTPrimed) edbe.getDamager();
+                        if (tnt.getSource() instanceof Player) expSource = (Player) tnt.getSource();
+                    } else if (edbe.getDamager() instanceof org.bukkit.entity.Fireball) {
+                        org.bukkit.entity.Fireball fb = (org.bukkit.entity.Fireball) edbe.getDamager();
+                        if (fb.getShooter() instanceof Player) expSource = (Player) fb.getShooter();
+                    }
+                    if (expSource != null && !expSource.equals(player)) {
+                        Team srcTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, expSource);
+                        Team vicTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, player);
+                        if (srcTeam != null && vicTeam != null && srcTeam.getName().equals(vicTeam.getName())) {
+                            isTeammate = true;
+                        }
+                    }
+                }
 
                 double tntJump = BedWars.getInstance().getConfig().getDouble("game.tnt.jump-power", 2.5);
                 double fbJump = BedWars.getInstance().getConfig().getDouble("game.fireball.jump-power", 2.0);
@@ -1334,7 +1419,7 @@ public class GameListener implements Listener {
                 double jumpPower = edbe.getDamager() instanceof org.bukkit.entity.TNTPrimed ? tntJump : fbJump;
 
                 if (edbe.getDamager() instanceof org.bukkit.entity.TNTPrimed) {
-                    double finalDmg = tntDmgEnabled ? tntDmg : 0;
+                    double finalDmg = tntDmgEnabled ? (isTeammate ? tntTeamDmg : tntDmg) : 0;
                     if (player.getHealth() > finalDmg) {
                         event.setDamage(finalDmg);
                     } else if (tntDmgEnabled) {
@@ -1343,7 +1428,7 @@ public class GameListener implements Listener {
                         event.setDamage(0);
                     }
                 } else {
-                    double finalDmg = fireballDmgEnabled ? fireballDmg : 0;
+                    double finalDmg = fireballDmgEnabled ? (isTeammate ? fireballTeamDmg : fireballDmg) : 0;
                     if (player.getHealth() > finalDmg) {
                         event.setDamage(finalDmg);
                     } else if (fireballDmgEnabled) {

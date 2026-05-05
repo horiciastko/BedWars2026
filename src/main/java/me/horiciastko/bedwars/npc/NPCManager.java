@@ -75,7 +75,10 @@ public class NPCManager {
             return;
         }
 
-        location.getWorld().getNearbyEntities(location, 1.25, 2.5, 1.25).forEach(entity -> {
+        // Y-radius of 6.0 is needed to catch all hologram armor stands:
+        // holograms start at entityHeight+0.3 above the NPC and stack by 0.25 per line,
+        // so with multiple description lines they can reach 3+ blocks above the NPC position.
+        location.getWorld().getNearbyEntities(location, 1.25, 6.0, 1.25).forEach(entity -> {
             if (entity instanceof org.bukkit.entity.Villager) {
                 BedWarsNPC npc = npcLookup.get(entity.getUniqueId());
                 if (npc != null) {

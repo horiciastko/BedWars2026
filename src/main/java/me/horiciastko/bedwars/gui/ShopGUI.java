@@ -551,6 +551,25 @@ public class ShopGUI extends BaseGUI {
             }
         }
 
+        // Block duplicate shears purchase — shears are permanent, buying a second one
+        // would just be a waste (and causes stacking exploits).
+        if (xMat == XMaterial.SHEARS) {
+            boolean alreadyHas = BedWars.getInstance().getGameManager().playerHasShears(player.getUniqueId());
+            if (!alreadyHas) {
+                for (ItemStack is : player.getInventory().getContents()) {
+                    if (is != null && is.getType() == Material.SHEARS) {
+                        alreadyHas = true;
+                        break;
+                    }
+                }
+            }
+            if (alreadyHas) {
+                player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(), "shop-armor-already-owned"));
+                BedWars.getInstance().getSoundManager().playSound(player, "shop-insufficient-money");
+                return;
+            }
+        }
+
         // Block duplicate armor purchase at same or better tier
         if (xMat.name().endsWith("_BOOTS") && (xMat.name().contains("CHAIN")
                 || xMat.name().contains("IRON") || xMat.name().contains("DIAMOND"))) {
@@ -778,14 +797,6 @@ public class ShopGUI extends BaseGUI {
 
     private void applyInventoryPresentation(ItemStack item, String inventoryName) {
         if (item == null || item.getType() == Material.AIR || inventoryName == null || inventoryName.isEmpty()) {
-            return;
-        }
-
-        // Stackable items (sponge, wool, arrows, etc.) must NOT get a custom display name.
-        // When the block is broken/dropped the vanilla item has no display name, so the two
-        // stacks would never merge. Only non-stackable items (swords, bows, potions…) get a name.
-        if (item.getType().getMaxStackSize() > 1) {
-            me.horiciastko.bedwars.utils.ItemTagUtils.removeTag(item, "inventory_name");
             return;
         }
 

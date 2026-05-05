@@ -179,6 +179,22 @@ public class CitizensNPCImpl implements BedWarsNPC {
         }
         hologramLines.clear();
 
+        // Remove any orphaned hologram armor stands near the entity that aren't tracked
+        // in hologramLines (e.g. left over from a previous session / new CitizensNPCImpl instance).
+        if (entity != null && entity.isValid() && entity.getWorld() != null) {
+            entity.getWorld().getNearbyEntities(entity.getLocation(), 1.5, 6.0, 1.5).forEach(nearby -> {
+                if (nearby instanceof org.bukkit.entity.ArmorStand) {
+                    try {
+                        java.util.Set<String> tags = nearby.getScoreboardTags();
+                        if (tags.contains("bw_hologram") || tags.contains("bw_npc_hologram")) {
+                            nearby.remove();
+                        }
+                    } catch (NoSuchMethodError ignored) {
+                    }
+                }
+            });
+        }
+
         String title = plugin.getNpcManager().getConfig().getString("types." + type + ".title", type);
         title = org.bukkit.ChatColor.translateAlternateColorCodes('&', title);
 

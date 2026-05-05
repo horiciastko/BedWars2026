@@ -435,10 +435,19 @@ public class GameManager {
         Map<UUID, Team> teamsMap = new ConcurrentHashMap<>();
         int playersPerTeam = arena.getMode().getPlayersPerTeam();
 
+        // Limit players per team so that players are spread across as many teams
+        // as possible. Example: 2 players in a duo (max 2/team) arena with 8 teams
+        // → effectivePlayersPerTeam=1 so each player lands in their own team.
+        int numTeams = arena.getTeams().size();
+        int effectivePlayersPerTeam = numTeams > 0
+                ? Math.max(1, Math.min(playersPerTeam,
+                        (int) Math.ceil((double) shuffledPlayers.size() / numTeams)))
+                : playersPerTeam;
+
         int playerIndex = 0;
         for (Team team : arena.getTeams()) {
             team.getMembers().clear();
-            for (int i = 0; i < playersPerTeam && playerIndex < shuffledPlayers.size(); i++) {
+            for (int i = 0; i < effectivePlayersPerTeam && playerIndex < shuffledPlayers.size(); i++) {
                 Player p = shuffledPlayers.get(playerIndex++);
                 team.getMembers().add(p);
                 teamsMap.put(p.getUniqueId(), team);
@@ -686,11 +695,18 @@ public class GameManager {
             playerHasShears.remove(player.getUniqueId());
 
             player.setGameMode(GameMode.SPECTATOR);
-            if (arena.getLobbyLocation() != null) {
-                player.teleport(arena.getLobbyLocation());
-            } else if (team.getSpawnLocation() != null) {
+            // Teleport to team spawn (inside the arena) so the spectator can fly around.
+            // Do NOT use getLobbyLocation() — that is the pre-game waiting lobby, which is
+            // outside the arena bounds and would trap the spectator immediately.
+            if (team.getSpawnLocation() != null) {
                 player.teleport(team.getSpawnLocation());
+            } else if (arena.getLobbyLocation() != null) {
+                player.teleport(arena.getLobbyLocation());
             }
+            String specTitle = plugin.getLanguageManager().getMessage(player.getUniqueId(), "spectator-title");
+            String specSub   = plugin.getLanguageManager().getMessage(player.getUniqueId(), "spectator-subtitle");
+            plugin.sendTitle(player, specTitle, specSub, 10, 60, 10);
+            player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "spectator-message"));
 
             checkForWin(arena);
         } else {
@@ -759,6 +775,12 @@ public class GameManager {
                     timeLeft--;
                 }
             }.runTaskTimer(plugin, 0L, 20L);
+
+            // Even for non-final deaths, check whether the game should end.
+            // This handles edge cases such as misconfigured arenas where multiple
+            // players are on the same team — in that case, killing a teammate makes
+            // only 1 team alive, and the game should end immediately.
+            checkForWin(arena);
         }
     }
 
@@ -1322,7 +1344,11 @@ public class GameManager {
             boolean anyAlive = t.getMembers().stream()
                     .anyMatch(p -> p.isOnline() && p.getGameMode() != GameMode.SPECTATOR);
 
-            if (anyAlive) {
+            // A team is still alive if their bed is intact — players will respawn.
+            // Only mark eliminated when bed is broken AND no alive players remain.
+            boolean bedIntact = !t.isBedBroken();
+
+            if (anyAlive || bedIntact) {
                 aliveTeams.add(t);
             } else if (!t.isEliminated()) {
                 t.setEliminated(true);

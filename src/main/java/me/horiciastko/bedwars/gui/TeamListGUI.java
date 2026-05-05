@@ -21,6 +21,11 @@ public class TeamListGUI extends BaseGUI {
     public void setContents(Player player) {
         int slot = 0;
         for (Team team : arena.getTeams()) {
+            // Row 6 (slots 45-53) is reserved for navigation buttons — skip it.
+            if (slot >= 45) {
+                slot = -1; // sentinel: no more room
+                break;
+            }
             ItemStack teamItem = new ItemBuilder(team.getMaterial())
                     .setName(team.getColor() + team.getDisplayName())
                     .setLore(
