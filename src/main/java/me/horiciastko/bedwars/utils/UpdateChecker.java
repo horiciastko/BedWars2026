@@ -140,7 +140,7 @@ public class UpdateChecker implements Listener {
             if (rv > cv) return true;
             if (rv < cv) return false;
         }
-        return false;
+        return r.length > c.length;
     }
 
     private int[] parseVersion(String version) {
