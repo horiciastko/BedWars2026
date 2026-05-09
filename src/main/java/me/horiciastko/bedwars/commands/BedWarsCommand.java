@@ -22,6 +22,14 @@ public class BedWarsCommand implements CommandExecutor, TabCompleter {
         subCommands.add(new LeaveCommand(plugin));
         subCommands.add(new RejoinCommand(plugin));
         subCommands.add(new StatsCommand(plugin));
+        subCommands.add(new PartyCommand(plugin));
+    }
+
+    public SubCommand getSubCommand(String name) {
+        for (SubCommand sub : subCommands) {
+            if (sub.getName().equalsIgnoreCase(name)) return sub;
+        }
+        return null;
     }
 
     @Override

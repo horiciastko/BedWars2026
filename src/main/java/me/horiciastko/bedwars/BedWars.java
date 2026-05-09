@@ -12,6 +12,7 @@ import me.horiciastko.bedwars.logic.ScoreboardManager;
 import me.horiciastko.bedwars.logic.GeneratorTask;
 import me.horiciastko.bedwars.logic.StatsManager;
 import me.horiciastko.bedwars.logic.SupportManager;
+import me.horiciastko.bedwars.logic.PartyManager;
 import me.horiciastko.bedwars.logic.SoundManager;
 import me.horiciastko.bedwars.logic.LanguageManager;
 import me.horiciastko.bedwars.logic.GameManager;
@@ -42,6 +43,7 @@ public class BedWars extends JavaPlugin {
     private StatsManager statsManager;
     private GameManager gameManager;
     private SoundManager soundManager;
+    private PartyManager partyManager;
     private LanguageManager languageManager;
     private LevelsManager levelsManager;
     @Getter
@@ -104,6 +106,7 @@ public class BedWars extends JavaPlugin {
         this.visualizationManager.clearAll();
         this.signManager = new SignManager(this);
         this.statsManager = new StatsManager(this);
+        this.partyManager = new PartyManager(this);
         this.gameManager = new GameManager(this);
         this.scoreboardManager = new ScoreboardManager(this);
 
@@ -119,6 +122,9 @@ public class BedWars extends JavaPlugin {
         BedWarsCommand bwCommand = new BedWarsCommand(this);
         getCommand("bw").setExecutor(bwCommand);
         getCommand("bw").setTabCompleter(bwCommand);
+
+        // Standalone shortcut commands (/party, /join, /leave) — toggled in config
+        registerStandaloneShortcuts(bwCommand);
 
         getServer().getPluginManager().registerEvents(new InventoryListener(), this);
         getServer().getPluginManager().registerEvents(new CleanupListener(), this);
@@ -145,6 +151,95 @@ public class BedWars extends JavaPlugin {
         me.horiciastko.bedwars.utils.UpdateChecker updateChecker = new me.horiciastko.bedwars.utils.UpdateChecker(this);
         getServer().getPluginManager().registerEvents(updateChecker, this);
         updateChecker.check();
+    }
+
+    private void registerStandaloneShortcuts(me.horiciastko.bedwars.commands.BedWarsCommand bwCommand) {
+        org.bukkit.configuration.file.FileConfiguration cfg = getConfig();
+        String[] shortcuts = {"join", "leave", "lobby", "party", "rejoin", "stats"};
+        for (String name : shortcuts) {
+            boolean enabled = cfg.getBoolean("commands.shortcuts." + name, true);
+            org.bukkit.command.PluginCommand cmd = getCommand(name);
+            if (cmd == null) continue;
+            if (enabled) {
+                me.horiciastko.bedwars.commands.SubCommand sub = bwCommand.getSubCommand(name);
+                if (sub != null) {
+                    me.horiciastko.bedwars.commands.StandaloneCommandExecutor exec =
+                            new me.horiciastko.bedwars.commands.StandaloneCommandExecutor(sub);
+                    cmd.setExecutor(exec);
+                    cmd.setTabCompleter(exec);
+                    getLogger().info("Standalone command enabled: /" + name);
+                }
+            } else {
+                unregisterShortcutCommand(cmd, name);
+            }
+        }
+
+        refreshServerCommands();
+    }
+
+    private void unregisterShortcutCommand(org.bukkit.command.PluginCommand cmd, String name) {
+        try {
+            Object commandMapObject = getCommandMap();
+            if (!(commandMapObject instanceof org.bukkit.command.CommandMap)) {
+                getLogger().warning("Could not access command map to unregister /" + name);
+                return;
+            }
+
+            org.bukkit.command.CommandMap commandMap = (org.bukkit.command.CommandMap) commandMapObject;
+            cmd.unregister(commandMap);
+
+            if (commandMap instanceof org.bukkit.command.SimpleCommandMap) {
+                java.lang.reflect.Field knownCommandsField = org.bukkit.command.SimpleCommandMap.class
+                        .getDeclaredField("knownCommands");
+                knownCommandsField.setAccessible(true);
+                Object knownCommandsObject = knownCommandsField.get(commandMap);
+                if (knownCommandsObject instanceof java.util.Map) {
+                    @SuppressWarnings("unchecked")
+                    java.util.Map<String, org.bukkit.command.Command> knownCommands =
+                            (java.util.Map<String, org.bukkit.command.Command>) knownCommandsObject;
+                    knownCommands.remove(name.toLowerCase());
+                    knownCommands.remove((getDescription().getName().toLowerCase() + ":" + name.toLowerCase()));
+                }
+            }
+
+            unregisterHelpTopic(name);
+
+            getLogger().info("Standalone command disabled and unregistered: /" + name);
+        } catch (Exception ex) {
+            getLogger().warning("Failed to unregister /" + name + ": " + ex.getMessage());
+        }
+    }
+
+    private void unregisterHelpTopic(String name) {
+        try {
+            org.bukkit.help.HelpMap helpMap = getServer().getHelpMap();
+            java.lang.reflect.Field helpTopicsField = helpMap.getClass().getDeclaredField("helpTopics");
+            helpTopicsField.setAccessible(true);
+            Object helpTopicsObject = helpTopicsField.get(helpMap);
+            if (helpTopicsObject instanceof java.util.Map) {
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, org.bukkit.help.HelpTopic> helpTopics =
+                        (java.util.Map<String, org.bukkit.help.HelpTopic>) helpTopicsObject;
+                helpTopics.remove("/" + name.toLowerCase());
+                helpTopics.remove("/" + getDescription().getName().toLowerCase() + ":" + name.toLowerCase());
+            }
+        } catch (Exception ignored) {
+            // HelpMap internals vary by server implementation.
+        }
+    }
+
+    private Object getCommandMap() throws ReflectiveOperationException {
+        java.lang.reflect.Method getCommandMapMethod = getServer().getClass().getMethod("getCommandMap");
+        return getCommandMapMethod.invoke(getServer());
+    }
+
+    private void refreshServerCommands() {
+        try {
+            java.lang.reflect.Method syncCommandsMethod = getServer().getClass().getMethod("syncCommands");
+            syncCommandsMethod.invoke(getServer());
+        } catch (ReflectiveOperationException ignored) {
+            // Older server implementations may not expose syncCommands.
+        }
     }
 
     @Override

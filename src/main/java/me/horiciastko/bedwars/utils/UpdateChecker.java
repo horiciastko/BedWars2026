@@ -60,7 +60,7 @@ public class UpdateChecker implements Listener {
                     while ((line = reader.readLine()) != null) {
                         response.append(line);
                     }
-
+                    
                     latestVersion = extractLatestVersion(response.toString());
                     if (latestVersion == null || latestVersion.trim().isEmpty()) {
                         Bukkit.getScheduler().runTask(plugin, () ->

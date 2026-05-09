@@ -15,6 +15,16 @@ public class CleanupListener implements Listener {
         // can build/break blocks in any world without running /bw admin build on manually.
         if (event.getPlayer().hasPermission("bedwars.admin")) {
             BedWars.getInstance().getGameManager().setBuildMode(event.getPlayer(), true);
+
+            org.bukkit.Bukkit.getScheduler().runTaskLater(BedWars.getInstance(), () -> {
+                if (!event.getPlayer().isOnline()) {
+                    return;
+                }
+                if (BedWars.getInstance().getDatabaseManager().isSplitMigrationAvailable()) {
+                    event.getPlayer().sendMessage("§6§l[BedWars] §eLegacy data migration is available.");
+                    event.getPlayer().sendMessage("§7Run §f/bw admin db migrate-split §7to move arenas/NPCs to split DB.");
+                }
+            }, 40L);
         }
     }
 
@@ -24,6 +34,8 @@ public class CleanupListener implements Listener {
         BedWars.getInstance().getArenaManager().setEditArena(event.getPlayer(), null);
         BedWars.getInstance().getArenaManager().leaveArena(event.getPlayer());
         BedWars.getInstance().getStatsManager().unloadStats(event.getPlayer().getUniqueId());
+        BedWars.getInstance().getPartyManager().declineInvite(event.getPlayer().getUniqueId());
+        BedWars.getInstance().getPartyManager().leaveParty(event.getPlayer().getUniqueId());
     }
 
     @EventHandler

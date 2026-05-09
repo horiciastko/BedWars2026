@@ -3,6 +3,7 @@ package me.horiciastko.bedwars.logic;
 import me.horiciastko.bedwars.BedWars;
 import me.horiciastko.bedwars.models.Arena;
 import me.horiciastko.bedwars.models.Team;
+import me.horiciastko.bedwars.utils.SerializationUtils;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
@@ -14,13 +15,341 @@ import java.util.concurrent.ConcurrentHashMap;
 @SuppressWarnings("deprecation")
 public class VisualizationManager {
 
+    public static class LeaderboardHologram {
+        private final String id;
+        private final Location location;
+        private final String statType;
+        private final String period;
+        private final int lines;
+        private final String title;
+
+        public LeaderboardHologram(String id, Location location, String statType, String period, int lines, String title) {
+            this.id = id;
+            this.location = location;
+            this.statType = statType;
+            this.period = period;
+            this.lines = lines;
+            this.title = title;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public Location getLocation() {
+            return location;
+        }
+
+        public String getStatType() {
+            return statType;
+        }
+
+        public String getPeriod() {
+            return period;
+        }
+
+        public int getLines() {
+            return lines;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+    }
+
     private final Map<UUID, List<ArmorStand>> activeHolograms = new ConcurrentHashMap<>();
     private final Map<String, List<ArmorStand>> activeGameHolograms = new ConcurrentHashMap<>();
     private final Map<String, List<ArmorStand>> generatorVisuals = new ConcurrentHashMap<>();
+    private final Map<String, LeaderboardHologram> leaderboardDefinitions = new ConcurrentHashMap<>();
+    private final Map<String, List<ArmorStand>> activeLeaderboardHolograms = new ConcurrentHashMap<>();
     private final BedWars plugin;
+    private static final String LEADERBOARD_SETTINGS_KEY = "leaderboard_holograms";
 
     public VisualizationManager(BedWars plugin) {
         this.plugin = plugin;
+        loadLeaderboardHolograms();
+        startLeaderboardRefreshTask();
+    }
+
+    public String createLeaderboardHologram(Location location, String statType, String period, int lines, String customTitle) {
+        if (location == null || location.getWorld() == null)
+            return null;
+
+        String normalizedStat = normalizeStatType(statType);
+        String normalizedPeriod = normalizePeriod(period);
+        if (normalizedStat == null || normalizedPeriod == null)
+            return null;
+
+        int safeLines = Math.max(1, Math.min(15, lines));
+        String id = UUID.randomUUID().toString().substring(0, 8);
+        Location base = location.clone();
+        String title = customTitle == null ? "" : customTitle;
+
+        leaderboardDefinitions.put(id,
+                new LeaderboardHologram(id, base, normalizedStat, normalizedPeriod, safeLines, title));
+        saveLeaderboardHolograms();
+        refreshLeaderboardHolograms();
+        return id;
+    }
+
+    public boolean removeLeaderboardHologram(String id) {
+        if (id == null)
+            return false;
+        LeaderboardHologram removed = leaderboardDefinitions.remove(id);
+        if (removed == null)
+            return false;
+
+        List<ArmorStand> stands = activeLeaderboardHolograms.remove(id);
+        if (stands != null) {
+            stands.forEach(ArmorStand::remove);
+        }
+
+        saveLeaderboardHolograms();
+        return true;
+    }
+
+    public String removeNearestLeaderboardHologram(Location reference, double maxDistance) {
+        if (reference == null || reference.getWorld() == null)
+            return null;
+
+        double maxDistanceSquared = maxDistance * maxDistance;
+        String nearestId = null;
+        double nearestDistance = Double.MAX_VALUE;
+
+        for (LeaderboardHologram hologram : leaderboardDefinitions.values()) {
+            Location loc = hologram.getLocation();
+            if (loc == null || loc.getWorld() == null)
+                continue;
+            if (!loc.getWorld().getUID().equals(reference.getWorld().getUID()))
+                continue;
+
+            double distance = loc.distanceSquared(reference);
+            if (distance <= maxDistanceSquared && distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestId = hologram.getId();
+            }
+        }
+
+        if (nearestId != null && removeLeaderboardHologram(nearestId)) {
+            return nearestId;
+        }
+        return null;
+    }
+
+    public List<LeaderboardHologram> getLeaderboardHolograms() {
+        return new ArrayList<>(leaderboardDefinitions.values());
+    }
+
+    public void refreshLeaderboardHolograms() {
+        for (List<ArmorStand> stands : activeLeaderboardHolograms.values()) {
+            stands.forEach(ArmorStand::remove);
+        }
+        activeLeaderboardHolograms.clear();
+
+        for (LeaderboardHologram hologram : leaderboardDefinitions.values()) {
+            spawnSingleLeaderboardHologram(hologram);
+        }
+    }
+
+    private void spawnSingleLeaderboardHologram(LeaderboardHologram hologram) {
+        if (hologram == null || !isWorldLoaded(hologram.getLocation()))
+            return;
+
+        List<String> lines = buildLeaderboardLines(hologram);
+        if (lines.isEmpty())
+            return;
+
+        List<ArmorStand> stands = new ArrayList<>();
+        Location base = hologram.getLocation().clone().add(0.5, 2.6, 0.5);
+        for (int i = 0; i < lines.size(); i++) {
+            ArmorStand stand = createLeaderboardArmorStand(base.clone().add(0, -(i * 0.28), 0), lines.get(i), hologram.getId());
+            if (stand != null) {
+                stands.add(stand);
+            }
+        }
+        activeLeaderboardHolograms.put(hologram.getId(), stands);
+    }
+
+    private List<String> buildLeaderboardLines(LeaderboardHologram hologram) {
+        List<String> lines = new ArrayList<>();
+        String header = (hologram.getTitle() != null && !hologram.getTitle().trim().isEmpty())
+                ? ChatColor.translateAlternateColorCodes('&', hologram.getTitle())
+                : "§6§l" + getStatDisplayName(hologram.getStatType()) + " §eLEADERBOARD";
+        lines.add(header);
+        lines.add("§7Period: §f" + getPeriodDisplayName(hologram.getPeriod()));
+        lines.add("§8----------------------");
+
+        for (int rank = 1; rank <= hologram.getLines(); rank++) {
+            DatabaseManager.LeaderboardEntry entry;
+            if ("alltime".equals(hologram.getPeriod())) {
+                entry = plugin.getDatabaseManager().getTopLifetimeStatEntry(hologram.getStatType(), rank);
+            } else {
+                entry = plugin.getDatabaseManager().getTopStatEntry(hologram.getStatType(), getPeriodStartMillis(hologram.getPeriod()), rank);
+            }
+
+            if (entry == null) {
+                lines.add("§7#" + rank + " §8- §7Brak danych");
+            } else {
+                lines.add("§f#" + rank + " §e" + entry.getName() + " §8- §b" + entry.getValue());
+            }
+        }
+
+        return lines;
+    }
+
+    private ArmorStand createLeaderboardArmorStand(Location loc, String text, String id) {
+        if (!isWorldLoaded(loc))
+            return null;
+
+        String idTag = "bw_lb_id_" + id;
+        return loc.getWorld().spawn(loc, ArmorStand.class, stand -> {
+            stand.addScoreboardTag("bw_lb_hologram");
+            stand.addScoreboardTag(idTag);
+            stand.setVisible(false);
+            stand.setGravity(false);
+            stand.setSmall(true);
+            stand.setMarker(true);
+            stand.setCustomName(text);
+            stand.setCustomNameVisible(true);
+            stand.setInvulnerable(true);
+        });
+    }
+
+    private void loadLeaderboardHolograms() {
+        leaderboardDefinitions.clear();
+        String raw = plugin.getDatabaseManager().getSetting(LEADERBOARD_SETTINGS_KEY);
+        if (raw == null || raw.trim().isEmpty())
+            return;
+
+        String[] records = raw.split("\\n");
+        for (String record : records) {
+            if (record.trim().isEmpty())
+                continue;
+            String[] part = record.split("\\|", 6);
+            if (part.length < 6)
+                continue;
+
+            Location location = SerializationUtils.stringToLocation(part[1]);
+            if (location == null)
+                continue;
+
+            String stat = normalizeStatType(part[2]);
+            String period = normalizePeriod(part[3]);
+            int lines;
+            try {
+                lines = Integer.parseInt(part[4]);
+            } catch (NumberFormatException ex) {
+                lines = 10;
+            }
+
+            if (stat == null || period == null)
+                continue;
+
+            String title;
+            try {
+                title = new String(Base64.getDecoder().decode(part[5]), java.nio.charset.StandardCharsets.UTF_8);
+            } catch (IllegalArgumentException ex) {
+                title = "";
+            }
+
+            leaderboardDefinitions.put(part[0], new LeaderboardHologram(part[0], location, stat, period, Math.max(1, Math.min(15, lines)), title));
+        }
+    }
+
+    private void saveLeaderboardHolograms() {
+        StringBuilder builder = new StringBuilder();
+        for (LeaderboardHologram hologram : leaderboardDefinitions.values()) {
+            String encodedTitle = Base64.getEncoder().encodeToString(hologram.getTitle().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            String location = SerializationUtils.locationToString(hologram.getLocation());
+            builder.append(hologram.getId()).append("|")
+                    .append(location).append("|")
+                    .append(hologram.getStatType()).append("|")
+                    .append(hologram.getPeriod()).append("|")
+                    .append(hologram.getLines()).append("|")
+                    .append(encodedTitle)
+                    .append("\n");
+        }
+        plugin.getDatabaseManager().setSetting(LEADERBOARD_SETTINGS_KEY, builder.toString());
+    }
+
+    private void startLeaderboardRefreshTask() {
+        new org.bukkit.scheduler.BukkitRunnable() {
+            @Override
+            public void run() {
+                if (!plugin.isEnabled()) {
+                    cancel();
+                    return;
+                }
+                refreshLeaderboardHolograms();
+            }
+        }.runTaskTimer(plugin, 40L, 200L);
+    }
+
+    private String normalizeStatType(String statType) {
+        if (statType == null)
+            return null;
+        String lowered = statType.toLowerCase(Locale.ROOT);
+        if (lowered.equals("wins") || lowered.equals("final_kills") || lowered.equals("beds_broken")) {
+            return lowered;
+        }
+        return null;
+    }
+
+    private String normalizePeriod(String period) {
+        if (period == null)
+            return null;
+        String lowered = period.toLowerCase(Locale.ROOT);
+        if (lowered.equals("daily") || lowered.equals("weekly") || lowered.equals("monthly") || lowered.equals("alltime")) {
+            return lowered;
+        }
+        return null;
+    }
+
+    private String getStatDisplayName(String statType) {
+        switch (statType) {
+            case "wins":
+                return "Wins";
+            case "final_kills":
+                return "Final Kills";
+            case "beds_broken":
+                return "Beds Broken";
+            default:
+                return "Stats";
+        }
+    }
+
+    private String getPeriodDisplayName(String period) {
+        switch (period) {
+            case "daily":
+                return "Daily";
+            case "weekly":
+                return "Weekly";
+            case "monthly":
+                return "Monthly";
+            case "alltime":
+            default:
+                return "All-Time";
+        }
+    }
+
+    private long getPeriodStartMillis(String period) {
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now();
+        switch (period) {
+            case "daily":
+                return now.toLocalDate().atStartOfDay(now.getZone()).toInstant().toEpochMilli();
+            case "weekly":
+                java.time.ZonedDateTime weekStart = now
+                        .with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+                        .toLocalDate()
+                        .atStartOfDay(now.getZone());
+                return weekStart.toInstant().toEpochMilli();
+            case "monthly":
+                java.time.ZonedDateTime monthStart = now.withDayOfMonth(1).toLocalDate().atStartOfDay(now.getZone());
+                return monthStart.toInstant().toEpochMilli();
+            case "alltime":
+            default:
+                return 0L;
+        }
     }
 
     public void showHolograms(Player player, Arena arena) {
@@ -317,6 +646,11 @@ public class VisualizationManager {
             if (stands != null)
                 stands.forEach(ArmorStand::remove);
         }
+        for (String id : new ArrayList<>(activeLeaderboardHolograms.keySet())) {
+            List<ArmorStand> stands = activeLeaderboardHolograms.remove(id);
+            if (stands != null)
+                stands.forEach(ArmorStand::remove);
+        }
 
         for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
             for (org.bukkit.entity.Entity entity : world.getEntitiesByClass(ArmorStand.class)) {
@@ -324,7 +658,8 @@ public class VisualizationManager {
                         || entity.getScoreboardTags().contains("bw_game_hologram")
                         || entity.getScoreboardTags().contains("bw_gen_visual")
                         || entity.getScoreboardTags().contains("bw_gen_hologram")
-                        || entity.getScoreboardTags().contains("bw_gen_timer")) {
+                        || entity.getScoreboardTags().contains("bw_gen_timer")
+                        || entity.getScoreboardTags().contains("bw_lb_hologram")) {
                     entity.remove();
                 }
             }

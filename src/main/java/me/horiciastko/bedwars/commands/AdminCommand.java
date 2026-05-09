@@ -50,6 +50,22 @@ public class AdminCommand implements SubCommand {
             return;
         }
 
+        if (args[1].equalsIgnoreCase("migrate") || args[1].equalsIgnoreCase("migrate-split")) {
+            player.sendMessage("§eMigrating legacy arena/NPC data to split databases...");
+            me.horiciastko.bedwars.logic.DatabaseManager.SplitMigrationResult result = plugin.getDatabaseManager()
+                    .migrateLegacyDataToSplit();
+
+            if (result.isSuccess()) {
+                player.sendMessage("§a" + result.getMessage());
+                player.sendMessage("§7Arenas copied: §f" + result.getArenasCopied() + " §8| §7NPCs copied: §f"
+                        + result.getNpcsCopied());
+                player.sendMessage("§7Use §f/bw admin reload §7to refresh runtime config after migration.");
+            } else {
+                player.sendMessage("§c" + result.getMessage());
+            }
+            return;
+        }
+
         if (args[1].equalsIgnoreCase("setlobby")) {
             org.bukkit.Location loc = player.getLocation();
             plugin.getGameManager().setMainLobbyLocation(loc);
@@ -201,6 +217,149 @@ public class AdminCommand implements SubCommand {
                 return;
             }
             plugin.getSupportManager().createCitizensNPC(player, type);
+            return;
+        }
+
+        if (args[1].equalsIgnoreCase("leaderboard")) {
+            if (args.length < 3) {
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-usage"));
+                return;
+            }
+
+            if (args[2].equalsIgnoreCase("create")) {
+                if (args.length < 5) {
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-create-usage"));
+                    return;
+                }
+
+                String statType = args[3].toLowerCase();
+                String period = args[4].toLowerCase();
+                int lines = 10;
+                if (args.length >= 6) {
+                    try {
+                        lines = Integer.parseInt(args[5]);
+                    } catch (NumberFormatException ex) {
+                        player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-lines-invalid"));
+                        return;
+                    }
+                }
+
+                String id = plugin.getVisualizationManager().createLeaderboardHologram(player.getLocation(), statType, period,
+                        lines, "");
+                if (id == null) {
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-create-failed"));
+                    return;
+                }
+
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-created")
+                        .replace("%id%", id));
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-created-info")
+                        .replace("%stat%", statType)
+                        .replace("%period%", period)
+                        .replace("%lines%", String.valueOf(Math.max(1, Math.min(15, lines)))));
+                return;
+            }
+
+            if (args[2].equalsIgnoreCase("remove")) {
+                if (args.length >= 4) {
+                    boolean removed = plugin.getVisualizationManager().removeLeaderboardHologram(args[3]);
+                    if (removed) {
+                        player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-removed")
+                                .replace("%id%", args[3]));
+                    } else {
+                        player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-id-not-found")
+                                .replace("%id%", args[3]));
+                    }
+                    return;
+                }
+
+                String removedId = plugin.getVisualizationManager().removeNearestLeaderboardHologram(player.getLocation(), 6.0);
+                if (removedId == null) {
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-none-nearby"));
+                } else {
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-nearest-removed")
+                            .replace("%id%", removedId));
+                }
+                return;
+            }
+
+            if (args[2].equalsIgnoreCase("list")) {
+                List<me.horiciastko.bedwars.logic.VisualizationManager.LeaderboardHologram> holograms = plugin
+                        .getVisualizationManager().getLeaderboardHolograms();
+                if (holograms.isEmpty()) {
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-empty"));
+                    return;
+                }
+
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-list-header")
+                        .replace("%count%", String.valueOf(holograms.size())));
+                for (me.horiciastko.bedwars.logic.VisualizationManager.LeaderboardHologram hologram : holograms) {
+                    org.bukkit.Location loc = hologram.getLocation();
+                    String world = (loc != null && loc.getWorld() != null) ? loc.getWorld().getName() : "unknown";
+                    String coords = (loc != null)
+                            ? String.format("%.1f, %.1f, %.1f", loc.getX(), loc.getY(), loc.getZ())
+                            : "unknown";
+                    player.sendMessage("§e" + hologram.getId() + " §8- §f" + hologram.getStatType() + " §7/ §f"
+                            + hologram.getPeriod() + " §8- §bTOP " + hologram.getLines() + " §8- §7" + world + " §8@ §f"
+                            + coords);
+                }
+                return;
+            }
+
+            if (args[2].equalsIgnoreCase("refresh")) {
+                plugin.getVisualizationManager().refreshLeaderboardHolograms();
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-refreshed"));
+                return;
+            }
+
+            player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-leaderboard-usage"));
+            return;
+        }
+
+        if (args[1].equalsIgnoreCase("db")) {
+            if (args.length < 3) {
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-usage"));
+                return;
+            }
+
+            if (args[2].equalsIgnoreCase("status")) {
+                boolean splitEnabled = plugin.getDatabaseManager().isSplitModeEnabled();
+                boolean migrationAvailable = plugin.getDatabaseManager().isSplitMigrationAvailable();
+
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-status-header"));
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(),
+                        splitEnabled ? "admin-db-split-enabled" : "admin-db-split-disabled"));
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(),
+                        migrationAvailable ? "admin-db-migration-yes" : "admin-db-migration-no"));
+                if (splitEnabled && migrationAvailable) {
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-migration-hint"));
+                }
+                return;
+            }
+
+            if (args[2].equalsIgnoreCase("migrate-split") || args[2].equalsIgnoreCase("migrate")) {
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-migrate-starting"));
+                me.horiciastko.bedwars.logic.DatabaseManager.SplitMigrationResult result = plugin.getDatabaseManager()
+                        .migrateLegacyDataToSplit();
+
+                if (result.isSuccess()) {
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-migrate-success")
+                            .replace("%message%", result.getMessage()));
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-migrate-details")
+                            .replace("%arenas%", String.valueOf(result.getArenasCopied()))
+                            .replace("%npcs%", String.valueOf(result.getNpcsCopied())));
+                    // Reload arenas and NPCs into memory so they appear in GUI without a restart
+                    plugin.getArenaManager().loadArenas();
+                    plugin.getNpcManager().loadStandaloneNPCsFromDatabase();
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-migrate-reloaded"));
+                } else {
+                    player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-migrate-failed")
+                            .replace("%message%", result.getMessage()));
+                }
+                return;
+            }
+
+            player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-db-usage"));
             return;
         }
 
@@ -388,6 +547,10 @@ public class AdminCommand implements SubCommand {
             options.add("build");
             options.add("lang");
             options.add("setlobby");
+            options.add("leaderboard");
+            options.add("db");
+            options.add("migrate");
+            options.add("migrate-split");
             return filter(options, args[1]);
         }
 
@@ -410,17 +573,50 @@ public class AdminCommand implements SubCommand {
                 options.addAll(plugin.getNpcManager().getAvailableTypes());
             } else if (args[1].equalsIgnoreCase("lang")) {
                 options.addAll(plugin.getLanguageManager().getAvailableLanguages());
+            } else if (args[1].equalsIgnoreCase("leaderboard")) {
+                options.add("create");
+                options.add("remove");
+                options.add("list");
+                options.add("refresh");
+            } else if (args[1].equalsIgnoreCase("db")) {
+                options.add("status");
+                options.add("migrate");
+                options.add("migrate-split");
             }
             return filter(options, args[2]);
         }
 
         if (args.length == 4) {
+            if (args[1].equalsIgnoreCase("leaderboard") && args[2].equalsIgnoreCase("create")) {
+                List<String> stats = new ArrayList<>();
+                stats.add("wins");
+                stats.add("final_kills");
+                stats.add("beds_broken");
+                return filter(stats, args[3]);
+            }
+
+            if (args[1].equalsIgnoreCase("leaderboard") && args[2].equalsIgnoreCase("remove")) {
+                List<String> ids = plugin.getVisualizationManager().getLeaderboardHolograms().stream()
+                        .map(me.horiciastko.bedwars.logic.VisualizationManager.LeaderboardHologram::getId)
+                        .collect(Collectors.toList());
+                return filter(ids, args[3]);
+            }
+
             List<String> arenaNames = plugin.getArenaManager().getArenas().stream().map(Arena::getName)
                     .collect(Collectors.toList());
             return filter(new ArrayList<>(arenaNames), args[3]);
         }
 
         if (args.length == 5) {
+            if (args[1].equalsIgnoreCase("leaderboard") && args[2].equalsIgnoreCase("create")) {
+                List<String> periods = new ArrayList<>();
+                periods.add("daily");
+                periods.add("weekly");
+                periods.add("monthly");
+                periods.add("alltime");
+                return filter(periods, args[4]);
+            }
+
             if (args[1].equalsIgnoreCase("arena") && args[2].equalsIgnoreCase("group")) {
                 org.bukkit.configuration.ConfigurationSection groups = plugin.getConfig()
                         .getConfigurationSection("groups");
@@ -428,6 +624,16 @@ public class AdminCommand implements SubCommand {
                     return filter(new ArrayList<>(groups.getKeys(false)), args[4]);
                 }
                 return filter(java.util.Collections.singletonList("Default"), args[4]);
+            }
+        }
+
+        if (args.length == 6) {
+            if (args[1].equalsIgnoreCase("leaderboard") && args[2].equalsIgnoreCase("create")) {
+                List<String> lines = new ArrayList<>();
+                lines.add("5");
+                lines.add("10");
+                lines.add("15");
+                return filter(lines, args[5]);
             }
         }
 
@@ -455,6 +661,9 @@ public class AdminCommand implements SubCommand {
         player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-help-start"));
         player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-help-lang"));
         player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-help-setlobby"));
+        player.sendMessage("§7/bw admin leaderboard <create|remove|list|refresh> §8- §fLeaderboard hologramy");
+        player.sendMessage("§7/bw admin migrate §8- §fSzybka migracja legacy DB do split DB");
+        player.sendMessage("§7/bw admin db <status|migrate-split> §8- §fMigracja danych do split DB");
         player.sendMessage(" ");
     }
 }

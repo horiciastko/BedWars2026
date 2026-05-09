@@ -435,24 +435,42 @@ public class GameManager {
         Map<UUID, Team> teamsMap = new ConcurrentHashMap<>();
         int playersPerTeam = arena.getMode().getPlayersPerTeam();
 
-        // Limit players per team so that players are spread across as many teams
-        // as possible. Example: 2 players in a duo (max 2/team) arena with 8 teams
-        // → effectivePlayersPerTeam=1 so each player lands in their own team.
-        int numTeams = arena.getTeams().size();
-        int effectivePlayersPerTeam = numTeams > 0
-                ? Math.max(1, Math.min(playersPerTeam,
-                        (int) Math.ceil((double) shuffledPlayers.size() / numTeams)))
-                : playersPerTeam;
-
-        int playerIndex = 0;
         for (Team team : arena.getTeams()) {
             team.getMembers().clear();
-            for (int i = 0; i < effectivePlayersPerTeam && playerIndex < shuffledPlayers.size(); i++) {
-                Player p = shuffledPlayers.get(playerIndex++);
-                team.getMembers().add(p);
-                teamsMap.put(p.getUniqueId(), team);
+        }
+
+        List<List<Player>> groups = plugin.getPartyManager().buildAssignmentGroups(shuffledPlayers, playersPerTeam);
+        groups.sort((a, b) -> Integer.compare(b.size(), a.size()));
+
+        for (List<Player> group : groups) {
+            Team target = arena.getTeams().stream()
+                    .filter(team -> team.getMembers().size() + group.size() <= playersPerTeam)
+                    .min(java.util.Comparator.comparingInt(team -> team.getMembers().size()))
+                    .orElse(null);
+
+            if (target == null) {
+                for (Player player : group) {
+                    Team singleTarget = arena.getTeams().stream()
+                            .filter(team -> team.getMembers().size() < playersPerTeam)
+                            .min(java.util.Comparator.comparingInt(team -> team.getMembers().size()))
+                            .orElse(null);
+
+                    if (singleTarget == null) {
+                        continue;
+                    }
+
+                    singleTarget.getMembers().add(player);
+                    teamsMap.put(player.getUniqueId(), singleTarget);
+                }
+                continue;
+            }
+
+            for (Player player : group) {
+                target.getMembers().add(player);
+                teamsMap.put(player.getUniqueId(), target);
             }
         }
+
         playerTeams.put(arena, teamsMap);
     }
 

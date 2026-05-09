@@ -42,7 +42,7 @@ public class ArenaManager {
 
     public void loadArenas() {
         arenas.clear();
-        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+        try (Connection conn = plugin.getDatabaseManager().getArenaConnection()) {
 
             try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM bw_arenas")) {
                 ResultSet rs = ps.executeQuery();
@@ -248,7 +248,7 @@ public class ArenaManager {
     }
 
     public void saveArena(Arena arena) {
-        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+        try (Connection conn = plugin.getDatabaseManager().getArenaConnection()) {
             conn.setAutoCommit(false);
             try {
                 String arenaUpsert = plugin.getDatabaseManager().getType().equals("sqlite")
@@ -381,7 +381,7 @@ public class ArenaManager {
                 editSessions.remove(p);
             }
         }
-        try (Connection conn = plugin.getDatabaseManager().getConnection()) {
+        try (Connection conn = plugin.getDatabaseManager().getArenaConnection()) {
             try (PreparedStatement psSigns = conn.prepareStatement("DELETE FROM bw_signs WHERE arena_name = ?")) {
                 psSigns.setString(1, arena.getName());
                 psSigns.executeUpdate();
@@ -579,6 +579,10 @@ public class ArenaManager {
     }
 
     public void joinArena(Player player, Arena arena) {
+        joinArenaInternal(player, arena, false);
+    }
+
+    private void joinArenaInternal(Player player, Arena arena, boolean bypassPartyJoin) {
         if (arena.isResetting()) {
             player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "arena-resetting"));
             return;
@@ -605,6 +609,14 @@ public class ArenaManager {
                 }
             } else {
                 player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "arena-not-setup"));
+                return;
+            }
+        }
+
+        if (!bypassPartyJoin
+                && (arena.getState() == Arena.GameState.WAITING || arena.getState() == Arena.GameState.STARTING)
+                && plugin.getPartyManager().isLeader(player.getUniqueId())) {
+            if (tryJoinParty(player, arena)) {
                 return;
             }
         }
@@ -646,6 +658,43 @@ public class ArenaManager {
             player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "arena-joined").replace("%arena%", arena.getName()));
             plugin.getGameManager().checkLobbyLogistics(arena);
         }
+    }
+
+    private boolean tryJoinParty(Player leader, Arena arena) {
+        List<Player> partyMembers = new java.util.ArrayList<>(plugin.getPartyManager().getOnlinePartyMembers(leader.getUniqueId()));
+        if (partyMembers.size() <= 1) {
+            return false;
+        }
+
+        int alreadyInArena = 0;
+        for (Player member : partyMembers) {
+            if (arena.equals(getPlayerArena(member))) {
+                alreadyInArena++;
+            }
+        }
+
+        int neededSlots = partyMembers.size() - alreadyInArena;
+        int freeSlots = arena.getMaxPlayers() - arena.getPlayers().size();
+        if (neededSlots > freeSlots) {
+            leader.sendMessage("§cYour party does not fit in this arena (need " + neededSlots + " free slots).");
+            return true;
+        }
+
+        for (Player member : partyMembers) {
+            Arena currentArena = getPlayerArena(member);
+            if (currentArena != null && !currentArena.equals(arena)) {
+                leaveArena(member);
+            }
+        }
+
+        for (Player member : partyMembers) {
+            if (!arena.equals(getPlayerArena(member))) {
+                joinArenaInternal(member, arena, true);
+            }
+        }
+
+        leader.sendMessage("§aParty joined arena " + arena.getName() + ".");
+        return true;
     }
 
     public Team findClosestTeam(Arena arena, Location loc) {

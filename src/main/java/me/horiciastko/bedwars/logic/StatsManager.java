@@ -85,18 +85,21 @@ public class StatsManager {
     public void addWin(UUID uuid) {
         PlayerStats stats = getStats(uuid);
         stats.setWins(stats.getWins() + 1);
+        plugin.getDatabaseManager().recordStatEvent(uuid, "wins", 1);
         grantExperience(uuid, getXpPerWin(), "Win");
     }
 
     public void addFinalKill(UUID uuid) {
         PlayerStats stats = getStats(uuid);
         stats.setFinalKills(stats.getFinalKills() + 1);
+        plugin.getDatabaseManager().recordStatEvent(uuid, "final_kills", 1);
         grantExperience(uuid, getXpPerFinalKill(), "Final Kill");
     }
 
     public void addBedBroken(UUID uuid) {
         PlayerStats stats = getStats(uuid);
         stats.setBedsBroken(stats.getBedsBroken() + 1);
+        plugin.getDatabaseManager().recordStatEvent(uuid, "beds_broken", 1);
         grantExperience(uuid, getXpPerBedBroken(), "Bed Broken");
     }
     
