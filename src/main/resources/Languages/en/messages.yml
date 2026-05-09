@@ -383,6 +383,38 @@ admin-help-lang: "&e/bw admin lang <lang> &7- Set global plugin language"
 admin-help-setlobby: "&e/bw admin setlobby &7- Set the main lobby to your location"
 admin-setlobby-success: "&a[BedWars] Main lobby set to %world% (%x%, %y%, %z%)"
 
+# --- Leaderboard Admin ---
+shortcut-disabled: "&cThis shortcut command is disabled on this server. Use /bw instead."
+
+# --- Leaderboard Admin ---
+admin-leaderboard-usage: "&cUsage: /bw admin leaderboard <create|remove|list|refresh>"
+admin-leaderboard-create-usage: "&cUsage: /bw admin leaderboard create <wins|final_kills|beds_broken> <daily|weekly|monthly|alltime> [lines]"
+admin-leaderboard-lines-invalid: "&cLine count must be an integer."
+admin-leaderboard-create-failed: "&cFailed to create leaderboard. Check the stat type and period."
+admin-leaderboard-created: "&aLeaderboard hologram placed. ID: &e%id%"
+admin-leaderboard-created-info: "&7Stat: &f%stat% &8| &7Period: &f%period% &8| &7TOP lines: &f%lines%"
+admin-leaderboard-removed: "&aLeaderboard hologram removed. ID: &e%id%"
+admin-leaderboard-id-not-found: "&cNo hologram found with ID: &e%id%"
+admin-leaderboard-none-nearby: "&cNo leaderboard hologram found within 6 blocks."
+admin-leaderboard-nearest-removed: "&aNearest leaderboard hologram removed. ID: &e%id%"
+admin-leaderboard-empty: "&eNo leaderboard holograms placed."
+admin-leaderboard-list-header: "&6&lLeaderboard Holograms &7(%count%)"
+admin-leaderboard-refreshed: "&aAll leaderboard holograms refreshed."
+
+# --- DB Admin ---
+admin-db-usage: "&cUsage: /bw admin db <migrate-split|status>"
+admin-db-status-header: "&6&lDatabase Split Status"
+admin-db-split-enabled: "&7Split enabled: &aYES"
+admin-db-split-disabled: "&7Split enabled: &cNO"
+admin-db-migration-yes: "&7Migration available: &eYES"
+admin-db-migration-no: "&7Migration available: &aNO"
+admin-db-migration-hint: "&7Run: &f/bw admin db migrate-split"
+admin-db-migrate-starting: "&eMigrating legacy arena/NPC data to split databases..."
+admin-db-migrate-success: "&a%message%"
+admin-db-migrate-details: "&7Arenas copied: &f%arenas% &8| &7NPCs copied: &f%npcs%"
+admin-db-migrate-reloaded: "&aArenas and NPCs reloaded in memory."
+admin-db-migrate-failed: "&c%message%"
+
 # --- Generator Commands ---
 generator-no-permission: "&cYou don't have permission!"
 generator-not-editing: "&cYou must be editing an arena first! Use /bw setupArena <name>"

@@ -9,6 +9,19 @@
 database:
   # Type of database: "sqlite" or "mysql"
   type: "sqlite"
+
+  # SQLite settings (ignored if type is "mysql")
+  sqlite:
+    # Main/core database file (players, stats, settings, quickbuy)
+    file: "database.db"
+
+    # Optional split DB files to protect arena/NPC data from main DB resets.
+    # When disabled, plugin uses the main file above for everything.
+    split:
+      arenas-enabled: true
+      arenas-file: "arenas.db"
+      npcs-enabled: true
+      npcs-file: "npcs.db"
   
   # MySQL settings (ignored if type is "sqlite")
   mysql:
@@ -27,7 +40,7 @@ database:
 server:
   ip: "play.yourserver.net"
   id: "1"
-  version: "1.1.0"
+  version: "1.1.1"
 
 # These appear above team beds to show their status.
 # Hologram text is defined in Languages/*/messages.yml (hologram-team-line1, hologram-team-line2, hologram-eliminated-line1)
@@ -72,6 +85,19 @@ game:
 # Language settings
 # Note: You can change this via /bw admin lang <iso>
 default-language: "en"
+
+# Standalone Command Shortcuts
+# When enabled, players can use these commands without the /bw prefix.
+# /bw join, /bw leave, /bw lobby, /bw party, /bw rejoin and /bw stats always work
+# regardless of these settings.
+commands:
+  shortcuts:
+    lobby: true   # /lobby  (shortcut for /bw lobby)
+    party: true   # /party  (shortcut for /bw party)
+    join: true    # /join   (shortcut for /bw join)
+    leave: true   # /leave  (shortcut for /bw leave)
+    rejoin: true  # /rejoin (shortcut for /bw rejoin)
+    stats: true   # /stats  (shortcut for /bw stats)
 
 # World Backup Settings
 # Backup folders are created so that arenas can be restored after each game.

@@ -1,6 +1,7 @@
 name: BedWars
 version: ${project.version}
 main: me.horiciastko.bedwars.BedWars
+authors: [Horiciastko]
 api-version: '1.13'
 softdepend: [PlaceholderAPI, Citizens, Vault]
 
@@ -9,6 +10,24 @@ commands:
     description: Main BedWars command
     aliases: [bedwars]
     usage: /bw <subcommand>
+  lobby:
+    description: Return to the BedWars lobby (standalone alias for /bw lobby)
+    usage: /lobby
+  party:
+    description: Manage your BedWars party (standalone alias for /bw party)
+    usage: /party <invite|accept|leave|kick|list|disband>
+  join:
+    description: Join a BedWars arena (standalone alias for /bw join)
+    usage: /join [arena/group]
+  leave:
+    description: Leave the current BedWars arena (standalone alias for /bw leave)
+    usage: /leave
+  rejoin:
+    description: Rejoin your recent BedWars arena (standalone alias for /bw rejoin)
+    usage: /rejoin
+  stats:
+    description: View BedWars stats (standalone alias for /bw stats)
+    usage: /stats [player]
 
 permissions:
   bedwars.use:
