@@ -240,4 +240,14 @@ public class LanguageManager {
         String stripped = ChatColor.stripColor(displayName);
         return stripped != null && stripped.matches(".*\\(x\\d+\\)$");
     }
+
+    public void reloadDefaultLanguage() {
+        String newDefaultLang = plugin.getConfig().getString("default-language", "en");
+        if (configs.containsKey(newDefaultLang)) {
+            defaultLang = newDefaultLang;
+            if (messages.containsKey(newDefaultLang)) {
+                plugin.getLogger().info("Default language changed to: " + newDefaultLang);
+            }
+        }
+    }
 }

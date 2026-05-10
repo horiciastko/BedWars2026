@@ -762,7 +762,7 @@ public class DatabaseManager {
                 "FROM bw_stat_events e " +
                 "LEFT JOIN bw_players p ON p.uuid = e.player_uuid " +
                 "WHERE e.stat_type = ? AND (? <= 0 OR e.event_time >= ?) " +
-                "GROUP BY e.player_uuid, p.name " +
+                "GROUP BY e.player_uuid " +
                 "ORDER BY total DESC " +
                 "LIMIT 1 OFFSET ?";
 

@@ -94,8 +94,10 @@ public class AdminCommand implements SubCommand {
             plugin.saveConfig();
 
             plugin.getConfigManager().reloadAll();
+            plugin.getLanguageManager().reloadDefaultLanguage();
             plugin.getLanguageManager().setPlayerLanguage(player.getUniqueId(), targetLang);
             plugin.getNpcManager().refreshAllNPCs();
+            plugin.getVisualizationManager().refreshLeaderboardHolograms();
             
             for (Arena arena : plugin.getArenaManager().getArenas()) {
                 if (arena.getState() == Arena.GameState.IN_GAME) {

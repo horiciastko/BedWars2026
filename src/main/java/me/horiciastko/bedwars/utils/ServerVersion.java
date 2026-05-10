@@ -16,6 +16,12 @@ public enum ServerVersion {
     V1_18(18),
     V1_19(19),
     V1_20(20),
+    V1_21(21),
+    V1_22(22),
+    V1_23(23),
+    V1_24(24),
+    V1_25(25),
+    V26_1(26),
     UNKNOWN(0);
 
     private final int minor;
@@ -33,9 +39,15 @@ public enum ServerVersion {
         if (current == null) {
             String version = Bukkit.getBukkitVersion().split("-")[0];
             String[] parts = version.split("\\.");
-            if (parts.length >= 2) {
+            if (parts.length >= 1) {
                 try {
-                    int minor = Integer.parseInt(parts[1]);
+                    // Supports both legacy "1.x.y" and new "x.y" version formats.
+                    int minor;
+                    if (parts.length >= 2 && "1".equals(parts[0])) {
+                        minor = Integer.parseInt(parts[1]);
+                    } else {
+                        minor = Integer.parseInt(parts[0]);
+                    }
                     for (ServerVersion sv : values()) {
                         if (sv.minor == minor) {
                             current = sv;
