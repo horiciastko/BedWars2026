@@ -51,6 +51,11 @@ public class SetupCommand implements SubCommand {
                 .replace("%name%", name));
         }
 
+        if (arena.isResetting()) {
+            player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "arena-resetting"));
+            return;
+        }
+
         plugin.getArenaManager().setEditArena(player, arena);
         player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "setup-editing")
             .replace("%name%", name));

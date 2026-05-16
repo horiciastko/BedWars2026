@@ -119,15 +119,33 @@ public class GeneratorTask extends BukkitRunnable {
     }
 
     private void handleEvents(Arena arena) {
+        if (arena.getEventTimer() < 0) {
+            return;
+        }
+
         if (arena.getEventTimer() > 0) {
             arena.setEventTimer(arena.getEventTimer() - 1);
         } else {
             org.bukkit.configuration.file.FileConfiguration config = plugin.getConfigManager().getGeneratorConfig();
             java.util.List<java.util.Map<?, ?>> events = config.getMapList("events");
 
+            // Defensive guard: if the first event timer is unexpectedly zero very early in a new game,
+            // reinitialize it from config instead of immediately firing an upgrade.
+            if (arena.getEventIndex() == 0 && !events.isEmpty()) {
+                int expectedFirstDuration = resolveEventDurationSeconds(events, 0, 360);
+                if (expectedFirstDuration >= 30
+                        && arena.getGameTime() < Math.max(5, expectedFirstDuration / 2)
+                        && arena.getEventTimer() <= 0) {
+                    arena.setEventTimer(expectedFirstDuration);
+                    plugin.getLogger().warning("Detected invalid first event timer in arena " + arena.getName()
+                            + ", reinitializing to " + expectedFirstDuration + " seconds");
+                    return;
+                }
+            }
+
             if (arena.getEventIndex() < events.size()) {
                 java.util.Map<?, ?> currentEvent = events.get(arena.getEventIndex());
-                String eventId = (String) currentEvent.get("id");
+                String eventId = resolveEventId(currentEvent);
 
                 if (eventId != null) {
                     plugin.getGameManager().triggerGameEvent(arena, eventId);
@@ -136,19 +154,138 @@ public class GeneratorTask extends BukkitRunnable {
                 arena.setEventIndex(arena.getEventIndex() + 1);
 
                 if (arena.getEventIndex() < events.size()) {
-                    java.util.Map<?, ?> nextEvent = events.get(arena.getEventIndex());
-                    Object durationObj = nextEvent.get("duration");
-                    if (durationObj instanceof Integer) {
-                        arena.setEventTimer((int) durationObj);
-                    } else {
-                        plugin.getLogger().warning("Event at index " + arena.getEventIndex() + " is missing 'duration' field, using default 360 seconds");
-                        arena.setEventTimer(360);
-                    }
+                    arena.setEventTimer(resolveEventDurationSeconds(events, arena.getEventIndex(), 360));
                 } else {
                     arena.setEventTimer(-1);
                 }
             }
         }
+    }
+
+    private String resolveEventId(java.util.Map<?, ?> event) {
+        if (event == null) {
+            return null;
+        }
+
+        Object idObj = event.get("id");
+        if (idObj instanceof String) {
+            String id = ((String) idObj).trim().toLowerCase();
+            if (!id.isEmpty()) {
+                return id;
+            }
+        }
+
+        // Legacy format support (type + tier).
+        Object typeObj = event.get("type");
+        if (!(typeObj instanceof String)) {
+            return null;
+        }
+
+        String type = ((String) typeObj).trim().toLowerCase();
+        int tier = parsePositiveInt(event.get("tier"), -1);
+
+        if ("diamond_upgrade".equals(type)) {
+            return tier >= 3 ? "diamond_3" : "diamond_2";
+        }
+        if ("emerald_upgrade".equals(type)) {
+            return tier >= 3 ? "emerald_3" : "emerald_2";
+        }
+        if ("destroy_beds".equals(type) || "bed_gone".equals(type)) {
+            return "bed_gone";
+        }
+        if ("sudden_death".equals(type)) {
+            return "sudden_death";
+        }
+        if ("game_end".equals(type)) {
+            return "game_end";
+        }
+
+        String byName = resolveEventIdFromName(event.get("name"));
+        if (byName != null) {
+            return byName;
+        }
+
+        return null;
+    }
+
+    private String resolveEventIdFromName(Object nameObj) {
+        if (!(nameObj instanceof String)) {
+            return null;
+        }
+
+        String name = ((String) nameObj).trim().toLowerCase();
+        if (name.isEmpty()) {
+            return null;
+        }
+
+        // Check tier III before tier II because "iii" contains "ii".
+        if (name.contains("diamond") && (name.contains("iii") || name.contains(" 3"))) {
+            return "diamond_3";
+        }
+        if (name.contains("emerald") && (name.contains("iii") || name.contains(" 3"))) {
+            return "emerald_3";
+        }
+        if (name.contains("diamond") && (name.contains("ii") || name.contains(" 2"))) {
+            return "diamond_2";
+        }
+        if (name.contains("emerald") && (name.contains("ii") || name.contains(" 2"))) {
+            return "emerald_2";
+        }
+        if (name.contains("bed") && name.contains("gone")) {
+            return "bed_gone";
+        }
+        if (name.contains("sudden") && name.contains("death")) {
+            return "sudden_death";
+        }
+        if (name.contains("game") && name.contains("end")) {
+            return "game_end";
+        }
+
+        return null;
+    }
+
+    private int resolveEventDurationSeconds(java.util.List<java.util.Map<?, ?>> events, int index, int fallbackSeconds) {
+        if (events == null || index < 0 || index >= events.size()) {
+            return fallbackSeconds;
+        }
+
+        java.util.Map<?, ?> event = events.get(index);
+        int duration = parsePositiveInt(event.get("duration"), -1);
+        if (duration > 0) {
+            return duration;
+        }
+
+        // Legacy format support: "time" as absolute timestamp since game start.
+        int absoluteTime = parsePositiveInt(event.get("time"), -1);
+        if (absoluteTime > 0) {
+            if (index == 0) {
+                return absoluteTime;
+            }
+            int previousAbsolute = parsePositiveInt(events.get(index - 1).get("time"), -1);
+            if (previousAbsolute > 0 && absoluteTime > previousAbsolute) {
+                return absoluteTime - previousAbsolute;
+            }
+            return absoluteTime;
+        }
+
+        plugin.getLogger().warning("Event at index " + index + " is missing 'duration'/'time' field, using default "
+                + fallbackSeconds + " seconds");
+        return fallbackSeconds;
+    }
+
+    private int parsePositiveInt(Object value, int fallback) {
+        if (value instanceof Number) {
+            int parsed = ((Number) value).intValue();
+            return parsed > 0 ? parsed : fallback;
+        }
+        if (value instanceof String) {
+            try {
+                int parsed = Integer.parseInt(((String) value).trim());
+                return parsed > 0 ? parsed : fallback;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return fallback;
     }
 
     private void handleTeamGenerators(Arena arena) {

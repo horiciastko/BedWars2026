@@ -48,6 +48,7 @@ public class GameManager {
             buildMode.add(player.getUniqueId());
         else
             buildMode.remove(player.getUniqueId());
+        plugin.getDatabaseManager().setSetting("build_mode_" + player.getUniqueId(), enabled ? "1" : "0");
     }
 
     public void setTrapImmunity(UUID uuid, int seconds) {
@@ -365,21 +366,67 @@ public class GameManager {
             removeLobbyStructure(arena);
         }
 
+        arena.setTicks(0);
         arena.setGameTime(0);
         arena.setEventIndex(0);
+        arena.setDiamondTier(1);
+        arena.setEmeraldTier(1);
+        arena.setDiamondCooldown(0);
+        arena.setEmeraldCooldown(0);
         org.bukkit.configuration.file.FileConfiguration gConfig = plugin.getConfigManager().getGeneratorConfig();
         java.util.List<Map<?, ?>> events = gConfig.getMapList("events");
         if (!events.isEmpty()) {
-            Object durationObj = events.get(0).get("duration");
-            if (durationObj instanceof Integer) {
-                arena.setEventTimer((int) durationObj);
-            } else {
-                plugin.getLogger().warning("First event in arena " + arena.getName() + " is missing 'duration' field, using default 360 seconds");
-                arena.setEventTimer(360);
-            }
+            int firstDuration = resolveEventDurationSeconds(events, 0, 360);
+            arena.setEventTimer(firstDuration);
+        } else {
+            arena.setEventTimer(-1);
         }
 
         plugin.getSignManager().updateSigns(arena);
+    }
+
+    private int resolveEventDurationSeconds(java.util.List<Map<?, ?>> events, int index, int fallbackSeconds) {
+        if (events == null || index < 0 || index >= events.size()) {
+            return fallbackSeconds;
+        }
+
+        Map<?, ?> event = events.get(index);
+        int duration = parsePositiveInt(event.get("duration"), -1);
+        if (duration > 0) {
+            return duration;
+        }
+
+        // Legacy format support: "time" as absolute timestamp since game start.
+        int absoluteTime = parsePositiveInt(event.get("time"), -1);
+        if (absoluteTime > 0) {
+            if (index == 0) {
+                return absoluteTime;
+            }
+            int previousAbsolute = parsePositiveInt(events.get(index - 1).get("time"), -1);
+            if (previousAbsolute > 0 && absoluteTime > previousAbsolute) {
+                return absoluteTime - previousAbsolute;
+            }
+            return absoluteTime;
+        }
+
+        plugin.getLogger().warning("Event at index " + index + " in arena schedule is missing duration/time, using default "
+                + fallbackSeconds + " seconds");
+        return fallbackSeconds;
+    }
+
+    private int parsePositiveInt(Object value, int fallback) {
+        if (value instanceof Number) {
+            int parsed = ((Number) value).intValue();
+            return parsed > 0 ? parsed : fallback;
+        }
+        if (value instanceof String) {
+            try {
+                int parsed = Integer.parseInt(((String) value).trim());
+                return parsed > 0 ? parsed : fallback;
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return fallback;
     }
 
     private void removeLobbyStructure(Arena arena) {
@@ -541,6 +588,15 @@ public class GameManager {
         world.getEntitiesByClass(org.bukkit.entity.Item.class).forEach(org.bukkit.entity.Entity::remove);
     }
 
+    private void clearAllPotionEffects(Player player) {
+        if (player == null) {
+            return;
+        }
+        for (org.bukkit.potion.PotionEffect effect : player.getActivePotionEffects()) {
+            player.removePotionEffect(effect.getType());
+        }
+    }
+
     public void handleDeath(Player player, Arena arena, String reason) {
         if (player.getGameMode() == GameMode.SPECTATOR)
             return;
@@ -550,6 +606,7 @@ public class GameManager {
             player.setHealth(20);
             player.setFoodLevel(20);
             player.setGameMode(GameMode.SURVIVAL);
+            clearAllPotionEffects(player);
             player.getInventory().clear();
             player.setItemOnCursor(new ItemStack(Material.AIR));
             player.closeInventory();
@@ -621,6 +678,7 @@ public class GameManager {
         player.getInventory().clear();
         player.setItemOnCursor(new ItemStack(Material.AIR));
         player.closeInventory();
+        clearAllPotionEffects(player);
         player.setHealth(20);
         player.setFoodLevel(20);
 
@@ -767,6 +825,7 @@ public class GameManager {
                         } else {
                             player.teleport(arena.getLobbyLocation());
                         }
+                        clearAllPotionEffects(player);
                         String respawnTitle = plugin.getLanguageManager().getMessage(player.getUniqueId(),
                                 "player-re-spawn-title");
                         plugin.sendTitle(player, respawnTitle, "", 5, 20, 5);
@@ -822,24 +881,32 @@ public class GameManager {
 
         switch (eventId) {
             case "diamond_2":
-                arena.setDiamondTier(2);
-                broadcastUpgrade(arena, gConfig.getString("global_generators.diamond.name", "Diamond"), "II",
-                        broadcastFmt);
+                if (arena.getDiamondTier() < 2) {
+                    arena.setDiamondTier(2);
+                    broadcastUpgrade(arena, gConfig.getString("global_generators.diamond.name", "Diamond"), "II",
+                            broadcastFmt);
+                }
                 break;
             case "emerald_2":
-                arena.setEmeraldTier(2);
-                broadcastUpgrade(arena, gConfig.getString("global_generators.emerald.name", "Emerald"), "II",
-                        broadcastFmt);
+                if (arena.getEmeraldTier() < 2) {
+                    arena.setEmeraldTier(2);
+                    broadcastUpgrade(arena, gConfig.getString("global_generators.emerald.name", "Emerald"), "II",
+                            broadcastFmt);
+                }
                 break;
             case "diamond_3":
-                arena.setDiamondTier(3);
-                broadcastUpgrade(arena, gConfig.getString("global_generators.diamond.name", "Diamond"), "III",
-                        broadcastFmt);
+                if (arena.getDiamondTier() < 3) {
+                    arena.setDiamondTier(3);
+                    broadcastUpgrade(arena, gConfig.getString("global_generators.diamond.name", "Diamond"), "III",
+                            broadcastFmt);
+                }
                 break;
             case "emerald_3":
-                arena.setEmeraldTier(3);
-                broadcastUpgrade(arena, gConfig.getString("global_generators.emerald.name", "Emerald"), "III",
-                        broadcastFmt);
+                if (arena.getEmeraldTier() < 3) {
+                    arena.setEmeraldTier(3);
+                    broadcastUpgrade(arena, gConfig.getString("global_generators.emerald.name", "Emerald"), "III",
+                            broadcastFmt);
+                }
                 break;
             case "bed_gone":
                 destroyAllBeds(arena);
@@ -1362,9 +1429,9 @@ public class GameManager {
             boolean anyAlive = t.getMembers().stream()
                     .anyMatch(p -> p.isOnline() && p.getGameMode() != GameMode.SPECTATOR);
 
-            // A team is still alive if their bed is intact — players will respawn.
-            // Only mark eliminated when bed is broken AND no alive players remain.
-            boolean bedIntact = !t.isBedBroken();
+            // A team is still alive if their bed is intact AND they have members who can respawn.
+            // If all members left (via /leave), the bed no longer saves them.
+            boolean bedIntact = !t.isBedBroken() && !t.getMembers().isEmpty();
 
             if (anyAlive || bedIntact) {
                 aliveTeams.add(t);
@@ -1791,6 +1858,12 @@ public class GameManager {
             @Override
             public void run() {
                 List<Player> toKick = new ArrayList<>(arena.getPlayers());
+                // Also collect mid-game spectators that are in playerArenaCache but not arena.getPlayers()
+                for (java.util.Map.Entry<Player, Arena> entry : new java.util.ArrayList<>(plugin.getArenaManager().getPlayerArenaCacheEntries())) {
+                    if (entry.getValue() == arena && !toKick.contains(entry.getKey())) {
+                        toKick.add(entry.getKey());
+                    }
+                }
                 for (Player p : toKick) {
                     plugin.getArenaManager().leaveArena(p);
                     p.sendMessage(plugin.getLanguageManager().getMessage(p.getUniqueId(), "arena-send-lobby"));
@@ -1802,6 +1875,14 @@ public class GameManager {
                 plugin.getVisualizationManager().removeGameHolograms(arena);
 
                 arena.reset();
+                for (org.bukkit.entity.Player editor : org.bukkit.Bukkit.getOnlinePlayers()) {
+                    Arena editArena = plugin.getArenaManager().getEditArena(editor);
+                    if (editArena != null && editArena.getName().equals(arena.getName())) {
+                        editor.sendMessage(plugin.getLanguageManager().getMessage(editor.getUniqueId(), "setup-edit-stopped-resetting")
+                                .replace("%name%", arena.getName()));
+                        plugin.getArenaManager().kickFromEditMode(editor);
+                    }
+                }
                 arena.setResetting(true);
                 plugin.getSignManager().updateSigns(arena);
 

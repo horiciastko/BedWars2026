@@ -173,13 +173,14 @@ public class GameListener implements Listener {
         }
 
         Team attackerTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, player);
+        boolean adminBreak = BedWars.getInstance().getGameManager().isInBuildMode(player);
 
-        if (attackerTeam == null) {
+        if (attackerTeam == null && !adminBreak) {
             event.setCancelled(true);
             return;
         }
 
-        if (attackerTeam.getName().equals(victimTeam.getName())) {
+        if (!adminBreak && attackerTeam.getName().equals(victimTeam.getName())) {
             event.setCancelled(true);
             String msg = BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(),
                     "interact-cant-destroy-bed");
@@ -190,7 +191,7 @@ public class GameListener implements Listener {
 
             victimTeam.setBedBroken(true);
 
-            String attackerColor = (attackerTeam.getColor() != null ? attackerTeam.getColor().toString() : "§f");
+            String attackerColor = (attackerTeam != null && attackerTeam.getColor() != null ? attackerTeam.getColor().toString() : "§f");
 
             String bedMsg = BedWars.getInstance().getLanguageManager().getMessage(null, "interact-bed-destroy-chat");
             String formattedMsg = bedMsg
@@ -201,7 +202,7 @@ public class GameListener implements Listener {
 
             for (Player p : arena.getPlayers()) {
                 p.sendMessage(formattedMsg);
-                if (p.getUniqueId().equals(player.getUniqueId()) || attackerTeam.getMembers().contains(p)) {
+                if (p.getUniqueId().equals(player.getUniqueId()) || (attackerTeam != null && attackerTeam.getMembers().contains(p))) {
                     BedWars.getInstance().getSoundManager().playSound(p, "bed-destroy");
                 } else if (victimTeam.getMembers().contains(p)) {
                     BedWars.getInstance().sendTitle(p,
@@ -236,6 +237,7 @@ public class GameListener implements Listener {
             }
 
             hideArmorForViewers(player);
+            spawnInvisibilityParticles(player);
             currentlyHidden.add(player.getUniqueId());
         }
 
@@ -292,6 +294,17 @@ public class GameListener implements Listener {
         }
     }
 
+    private void spawnInvisibilityParticles(Player invisiblePlayer) {
+        Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(invisiblePlayer);
+        if (arena == null) return;
+
+        org.bukkit.Location loc = invisiblePlayer.getLocation().add(0, 1.0, 0);
+        for (Player viewer : arena.getPlayers()) {
+            if (viewer.equals(invisiblePlayer)) continue;
+            viewer.spawnParticle(org.bukkit.Particle.SPELL_MOB, loc, 5, 0.25, 0.4, 0.25, 0);
+        }
+    }
+
     private ItemStack normalizeEquipment(ItemStack item) {
         return item == null ? new ItemStack(Material.AIR) : item;
     }
@@ -339,16 +352,6 @@ public class GameListener implements Listener {
             }
             event.setCancelled(true);
             return;
-        }
-
-        // When sneaking and right-clicking a bed while holding a block, Minecraft bypasses
-        // the bed interaction and fires BlockPlaceEvent instead — cancel it so the bed GUI opens.
-        if (player.isSneaking()) {
-            org.bukkit.block.Block against = event.getBlockAgainst();
-            if (against != null && against.getType().name().contains("BED")) {
-                event.setCancelled(true);
-                return;
-            }
         }
 
         for (Team t : arena.getTeams()) {
@@ -457,10 +460,16 @@ public class GameListener implements Listener {
                 String special = me.horiciastko.bedwars.utils.ItemTagUtils.getTag(chestItem, "special_item");
                 if ("tower".equals(special)) {
                     event.setCancelled(true);
+                    boolean built = me.horiciastko.bedwars.utils.TowerBuilder.build(player, arena,
+                            event.getBlock().getLocation());
+                    if (!built) {
+                        player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(
+                                player.getUniqueId(), "interact-cant-build"));
+                        return;
+                    }
                     if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
                         chestItem.setAmount(chestItem.getAmount() - 1);
                     }
-                    me.horiciastko.bedwars.utils.TowerBuilder.build(player, arena, event.getBlock().getLocation());
                     return;
                 }
             }
@@ -970,7 +979,12 @@ public class GameListener implements Listener {
         if (event.getAction() == Action.RIGHT_CLICK_BLOCK
                 && event.getClickedBlock() != null
                 && event.getClickedBlock().getType().name().contains("BED")) {
-            event.setCancelled(true);
+            ItemStack handItem = event.getItem();
+            // Allow bed defense placement when player is holding a placeable block.
+            // Cancel only plain bed interaction (e.g. empty hand or non-block items).
+            if (handItem == null || handItem.getType() == Material.AIR || !handItem.getType().isBlock()) {
+                event.setCancelled(true);
+            }
         }
 
         // Block hopper interaction in-game
@@ -1086,10 +1100,15 @@ public class GameListener implements Listener {
                 }
 
                 event.setCancelled(true);
+                boolean built = me.horiciastko.bedwars.utils.TowerBuilder.build(player, arena, towerLoc);
+                if (!built) {
+                    player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(
+                            player.getUniqueId(), "interact-cant-build"));
+                    return;
+                }
                 if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
                     itemStack.setAmount(itemStack.getAmount() - 1);
                 }
-                me.horiciastko.bedwars.utils.TowerBuilder.build(player, arena, towerLoc);
             } else if (itemStack.getType() == Material.SNOWBALL) {
                 // Bedbug: thrown as a projectile; silverfish spawns on landing (ProjectileListener)
                 event.setCancelled(true);
@@ -1443,22 +1462,7 @@ public class GameListener implements Listener {
 
                 direction.setY(0.5);
                 direction.normalize().multiply(jumpPower);
-
-                player.setAllowFlight(true);
                 player.setVelocity(player.getVelocity().add(direction));
-
-                new org.bukkit.scheduler.BukkitRunnable() {
-                    @Override
-                    public void run() {
-                        if (player.isOnline()) {
-                            if (player.getGameMode() != org.bukkit.GameMode.CREATIVE &&
-                                    player.getGameMode() != org.bukkit.GameMode.SPECTATOR) {
-                                player.setAllowFlight(false);
-                                player.setFlying(false);
-                            }
-                        }
-                    }
-                }.runTaskLater(BedWars.getInstance(), 40L);
             }
         }
 

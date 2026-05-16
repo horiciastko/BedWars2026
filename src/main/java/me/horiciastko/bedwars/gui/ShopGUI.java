@@ -333,7 +333,35 @@ public class ShopGUI extends BaseGUI {
                     "shop-right-click-add"));
         }
 
-        return builder.build();
+        ItemStack built = builder.build();
+        applyPotionMeta(built, itemData);
+        return built;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void applyPotionMeta(ItemStack item, ConfigurationSection itemData) {
+        if (item == null) return;
+        Material mat = item.getType();
+        if (mat != Material.POTION && mat != Material.SPLASH_POTION && mat != Material.LINGERING_POTION) return;
+        if (!itemData.getBoolean("use_base_potion", false)) return;
+        String typeName = itemData.getString("potion_type", "").toUpperCase();
+        if (typeName.isEmpty()) return;
+        org.bukkit.inventory.meta.PotionMeta pm = (org.bukkit.inventory.meta.PotionMeta) item.getItemMeta();
+        if (pm == null) return;
+        org.bukkit.potion.PotionType resolvedType = null;
+        try {
+            resolvedType = org.bukkit.potion.PotionType.valueOf(typeName);
+        } catch (IllegalArgumentException e) {
+            if (typeName.equals("JUMP")) {
+                try { resolvedType = org.bukkit.potion.PotionType.valueOf("JUMP_BOOST"); } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        if (resolvedType != null) {
+            try {
+                pm.setBasePotionData(new org.bukkit.potion.PotionData(resolvedType));
+            } catch (Exception ignored) {}
+        }
+        item.setItemMeta(pm);
     }
 
     @Override
@@ -666,31 +694,38 @@ public class ShopGUI extends BaseGUI {
                 }
             }
 
-            if (xMat == XMaterial.POTION) {
+            if (xMat == XMaterial.POTION || xMat == XMaterial.SPLASH_POTION || xMat == XMaterial.LINGERING_POTION) {
                 org.bukkit.inventory.meta.PotionMeta pm = (org.bukkit.inventory.meta.PotionMeta) giving.getItemMeta();
                 if (pm != null) {
-                    // Clear default base type so it doesn't conflict with custom effects
-                    try {
-                        pm.setBasePotionData(new org.bukkit.potion.PotionData(org.bukkit.potion.PotionType.WATER));
-                    } catch (Exception ignored) {}
-                    String checkName = inventoryName.toLowerCase() + " " + itemData.getName().toLowerCase();
-                    if (checkName.contains("speed")) {
-                        org.bukkit.potion.PotionEffectType speedType = org.bukkit.potion.PotionEffectType.getByName("SPEED");
-                        if (speedType != null)
-                            pm.addCustomEffect(new org.bukkit.potion.PotionEffect(speedType, 45 * 20, 1), true);
-                        pm.setColor(org.bukkit.Color.AQUA);
-                    } else if (checkName.contains("jump")) {
-                        // JUMP was renamed to JUMP_BOOST in 1.20.5+
-                        org.bukkit.potion.PotionEffectType jumpType = org.bukkit.potion.PotionEffectType.getByName("JUMP_BOOST");
-                        if (jumpType == null) jumpType = org.bukkit.potion.PotionEffectType.getByName("JUMP");
-                        if (jumpType != null)
-                            pm.addCustomEffect(new org.bukkit.potion.PotionEffect(jumpType, 45 * 20, 4), true);
-                        pm.setColor(org.bukkit.Color.GREEN);
-                    } else if (checkName.contains("invisibility") || checkName.contains("invis")) {
-                        org.bukkit.potion.PotionEffectType invType = org.bukkit.potion.PotionEffectType.getByName("INVISIBILITY");
-                        if (invType != null)
-                            pm.addCustomEffect(new org.bukkit.potion.PotionEffect(invType, 30 * 20, 0), true);
-                        pm.setColor(org.bukkit.Color.GRAY);
+                    boolean useBasePotion = itemData.getBoolean("use_base_potion", false);
+                    if (useBasePotion) {
+                        applyPotionMeta(giving, itemData);
+                        pm = (org.bukkit.inventory.meta.PotionMeta) giving.getItemMeta();
+                    }
+
+                    String potionTypeName = itemData.getString("potion_type", "").toUpperCase();
+                    String checkName = potionTypeName.isEmpty()
+                            ? inventoryName.toLowerCase() + " " + itemData.getName().toLowerCase()
+                            : potionTypeName.toLowerCase();
+                    if (!useBasePotion) {
+                        if (checkName.contains("speed")) {
+                            org.bukkit.potion.PotionEffectType speedType = org.bukkit.potion.PotionEffectType.getByName("SPEED");
+                            if (speedType != null)
+                                pm.addCustomEffect(new org.bukkit.potion.PotionEffect(speedType, 45 * 20, 1), true);
+                            pm.setColor(org.bukkit.Color.AQUA);
+                        } else if (checkName.contains("jump")) {
+                            // JUMP was renamed to JUMP_BOOST in 1.20.5+
+                            org.bukkit.potion.PotionEffectType jumpType = org.bukkit.potion.PotionEffectType.getByName("JUMP_BOOST");
+                            if (jumpType == null) jumpType = org.bukkit.potion.PotionEffectType.getByName("JUMP");
+                            if (jumpType != null)
+                                pm.addCustomEffect(new org.bukkit.potion.PotionEffect(jumpType, 45 * 20, 4), true);
+                            pm.setColor(org.bukkit.Color.GREEN);
+                        } else if (checkName.contains("invisibility") || checkName.contains("invis")) {
+                            org.bukkit.potion.PotionEffectType invType = org.bukkit.potion.PotionEffectType.getByName("INVISIBILITY");
+                            if (invType != null)
+                                pm.addCustomEffect(new org.bukkit.potion.PotionEffect(invType, 30 * 20, 0), true);
+                            pm.setColor(org.bukkit.Color.GRAY);
+                        }
                     }
                     giving.setItemMeta(pm);
                 }

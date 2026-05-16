@@ -434,6 +434,10 @@ public class ArenaManager {
         }
     }
 
+    public java.util.Set<java.util.Map.Entry<Player, Arena>> getPlayerArenaCacheEntries() {
+        return playerArenaCache.entrySet();
+    }
+
     public Arena getEditArena(Player player) {
         return editSessions.get(player);
     }
@@ -455,6 +459,14 @@ public class ArenaManager {
                 preEditLocations.put(player, player.getLocation());
             }
             editSessions.put(player, arena);
+
+            // Auto-disable the arena so players can't join while it's being edited
+            if (arena.isEnabled()) {
+                arena.setEnabled(false);
+                saveArena(arena);
+                player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "arena-auto-disabled-editing")
+                        .replace("%name%", arena.getName()));
+            }
 
             if (arena.getWorldName() != null) {
                 org.bukkit.World world = org.bukkit.Bukkit.getWorld(arena.getWorldName());
@@ -532,6 +544,20 @@ public class ArenaManager {
         }
     }
 
+    /** Exits a player from edit mode without saving or backing up the world. Use when the arena is resetting. */
+    public void kickFromEditMode(Player player) {
+        editSessions.remove(player);
+        editTeamSessions.remove(player);
+        plugin.getVisualizationManager().hideHolograms(player);
+        plugin.getScoreboardManager().updateScoreboard(player);
+        Location loc = preEditLocations.remove(player);
+        if (loc != null) {
+            player.teleport(loc);
+        }
+        player.setGameMode(org.bukkit.GameMode.SURVIVAL);
+        player.setFlying(false);
+    }
+
     public Team getEditTeam(Player player) {
         return editTeamSessions.get(player);
     }
@@ -565,11 +591,18 @@ public class ArenaManager {
                 player.removePotionEffect(effect.getType());
             }
 
-            String lobbyStr = plugin.getDatabaseManager().getSetting("main_lobby");
-            if (lobbyStr != null && !lobbyStr.isEmpty()) {
-                Location lobbyLoc = SerializationUtils.stringToLocation(lobbyStr);
-                if (lobbyLoc != null)
-                    player.teleport(lobbyLoc);
+            Location lobbyLoc = plugin.getGameManager().getMainLobbyLocation();
+            if (lobbyLoc == null || lobbyLoc.getWorld() == null) {
+                String lobbyStr = plugin.getDatabaseManager().getSetting("main_lobby");
+                if (lobbyStr != null && !lobbyStr.isEmpty()) {
+                    lobbyLoc = SerializationUtils.stringToLocation(lobbyStr);
+                }
+            }
+
+            if (lobbyLoc != null && lobbyLoc.getWorld() != null) {
+                player.teleport(lobbyLoc);
+            } else {
+                player.teleport(player.getWorld().getSpawnLocation());
             }
 
             if (arena.getState() == Arena.GameState.IN_GAME) {

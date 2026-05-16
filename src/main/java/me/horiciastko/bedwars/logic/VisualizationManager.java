@@ -141,6 +141,8 @@ public class VisualizationManager {
     }
 
     public void refreshLeaderboardHolograms() {
+        cleanupOrphanedLeaderboardHolograms();
+
         for (List<ArmorStand> stands : activeLeaderboardHolograms.values()) {
             stands.forEach(ArmorStand::remove);
         }
@@ -172,6 +174,10 @@ public class VisualizationManager {
 
     private List<String> buildLeaderboardLines(LeaderboardHologram hologram) {
         List<String> lines = new ArrayList<>();
+        String noDataText = plugin.getLanguageManager().getMessage(null, "leaderboard-no-data");
+        if (noDataText == null || noDataText.isEmpty() || noDataText.startsWith("§cMissing path:")) {
+            noDataText = "No data";
+        }
         String header = (hologram.getTitle() != null && !hologram.getTitle().trim().isEmpty())
                 ? ChatColor.translateAlternateColorCodes('&', hologram.getTitle())
                 : "§6§l" + getStatDisplayName(hologram.getStatType()) + " §eLEADERBOARD";
@@ -188,7 +194,7 @@ public class VisualizationManager {
             }
 
             if (entry == null) {
-                lines.add("§7#" + rank + " §8- §7Brak danych");
+                lines.add("§7#" + rank + " §8- §7" + noDataText);
             } else {
                 lines.add("§f#" + rank + " §e" + entry.getName() + " §8- §b" + entry.getValue());
             }
@@ -283,6 +289,16 @@ public class VisualizationManager {
                 refreshLeaderboardHolograms();
             }
         }.runTaskTimer(plugin, 40L, 200L);
+    }
+
+    private void cleanupOrphanedLeaderboardHolograms() {
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            for (org.bukkit.entity.Entity entity : world.getEntitiesByClass(ArmorStand.class)) {
+                if (entity.getScoreboardTags().contains("bw_lb_hologram")) {
+                    entity.remove();
+                }
+            }
+        }
     }
 
     private String normalizeStatType(String statType) {

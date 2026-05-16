@@ -7,6 +7,11 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +44,8 @@ public class LanguageManager {
             }
             extractLanguageFiles(iso, dir);
         }
+
+        backfillAllYamlFromBundledResources();
 
         File[] dirs = langDir.listFiles(File::isDirectory);
         if (dirs != null) {
@@ -84,6 +91,7 @@ public class LanguageManager {
             File file = new File(dir, fileName);
 
             if (file.exists()) {
+                mergeMissingDefaults(iso, fileName, file);
                 FileConfiguration config = YamlConfiguration.loadConfiguration(file);
                 langConfigs.put(fileName.replace(".yml", ""), config);
                 if (fileName.equals("messages.yml")) {
@@ -95,6 +103,122 @@ public class LanguageManager {
         if (!langConfigs.isEmpty()) {
             configs.put(iso, langConfigs);
             plugin.getLogger().info("Loaded language data for: " + iso);
+        }
+    }
+
+    private void mergeMissingDefaults(String iso, String fileName, File file) {
+        String primaryResourcePath = "Languages/" + iso + "/" + fileName;
+        YamlConfiguration defaults = loadBundledYaml(primaryResourcePath);
+
+        // For custom languages, fallback to EN bundled defaults.
+        if (defaults == null && !"en".equalsIgnoreCase(iso)) {
+            defaults = loadBundledYaml("Languages/en/" + fileName);
+        }
+
+        if (defaults == null) {
+            return;
+        }
+
+        YamlConfiguration current = YamlConfiguration.loadConfiguration(file);
+        boolean changed = false;
+
+        for (String path : defaults.getKeys(true)) {
+            if (defaults.isConfigurationSection(path)) {
+                continue;
+            }
+            if (!current.contains(path)) {
+                current.set(path, defaults.get(path));
+                changed = true;
+            }
+        }
+
+        if (!changed) {
+            return;
+        }
+
+        try {
+            current.save(file);
+            plugin.getLogger().info("Filled missing language keys in " + iso + "/" + fileName + " without overriding existing values.");
+        } catch (IOException e) {
+            plugin.getLogger().warning("Could not save merged language defaults for " + iso + "/" + fileName + ": "
+                    + e.getMessage());
+        }
+    }
+
+    private YamlConfiguration loadBundledYaml(String resourcePath) {
+        InputStream in = plugin.getResource(resourcePath);
+        if (in == null) {
+            return null;
+        }
+        try (InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
+            return YamlConfiguration.loadConfiguration(reader);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private void backfillAllYamlFromBundledResources() {
+        File dataFolder = plugin.getDataFolder();
+        if (!dataFolder.exists()) {
+            return;
+        }
+
+        List<File> yamlFiles = new ArrayList<>();
+        collectYamlFiles(dataFolder, yamlFiles);
+        int updated = 0;
+
+        for (File file : yamlFiles) {
+            String relativePath = dataFolder.toPath().relativize(file.toPath()).toString()
+                    .replace(File.separatorChar, '/');
+
+            YamlConfiguration defaults = loadBundledYaml(relativePath);
+            if (defaults == null) {
+                continue;
+            }
+
+            YamlConfiguration current = YamlConfiguration.loadConfiguration(file);
+            boolean changed = false;
+
+            for (String path : defaults.getKeys(true)) {
+                if (defaults.isConfigurationSection(path)) {
+                    continue;
+                }
+                if (!current.contains(path)) {
+                    current.set(path, defaults.get(path));
+                    changed = true;
+                }
+            }
+
+            if (!changed) {
+                continue;
+            }
+
+            try {
+                current.save(file);
+                updated++;
+            } catch (IOException e) {
+                plugin.getLogger().warning("Could not save merged defaults for " + relativePath + ": "
+                        + e.getMessage());
+            }
+        }
+
+        if (updated > 0) {
+            plugin.getLogger().info("Filled missing keys in " + updated
+                    + " YAML file(s) from bundled defaults without overriding existing values.");
+        }
+    }
+
+    private void collectYamlFiles(File directory, List<File> out) {
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return;
+        }
+        for (File file : files) {
+            if (file.isDirectory()) {
+                collectYamlFiles(file, out);
+            } else if (file.getName().toLowerCase().endsWith(".yml")) {
+                out.add(file);
+            }
         }
     }
 

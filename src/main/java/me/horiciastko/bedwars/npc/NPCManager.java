@@ -304,31 +304,31 @@ public class NPCManager {
     }
 
     public boolean removeNPCById(int id) {
-        BedWarsNPC targetNPC = null;
+        boolean removed = false;
 
-        for (Map.Entry<BedWarsNPC, Integer> entry : standaloneNpcIds.entrySet()) {
+        for (Map.Entry<BedWarsNPC, Integer> entry : new HashMap<>(standaloneNpcIds).entrySet()) {
             if (entry.getValue().equals(id)) {
-                targetNPC = entry.getKey();
+                removeNPC(entry.getKey());
+                removed = true;
+            }
+        }
+
+        // NPC may be duplicated/desynced in runtime maps or not loaded in memory.
+        // Use DB record location+type as a final cleanup key and then delete the record.
+        List<DatabaseManager.StandaloneNPCRecord> dbRecords = plugin.getDatabaseManager().loadStandaloneNPCs();
+        for (DatabaseManager.StandaloneNPCRecord record : dbRecords) {
+            if (record.getId() == id) {
+                Location loc = SerializationUtils.stringToLocation(record.getLocation());
+                if (loc != null && loc.getWorld() != null) {
+                    removeStandaloneDuplicates(loc, record.getType());
+                }
+                plugin.getDatabaseManager().deleteStandaloneNPC(id);
+                removed = true;
                 break;
             }
         }
 
-        if (targetNPC != null) {
-            removeNPC(targetNPC);
-            return true;
-        }
-
-        // NPC may not be loaded in memory (e.g. world was not loaded at startup)
-        // Check the database directly and delete if it exists there
-        List<DatabaseManager.StandaloneNPCRecord> dbRecords = plugin.getDatabaseManager().loadStandaloneNPCs();
-        for (DatabaseManager.StandaloneNPCRecord record : dbRecords) {
-            if (record.getId() == id) {
-                plugin.getDatabaseManager().deleteStandaloneNPC(id);
-                return true;
-            }
-        }
-
-        return false;
+        return removed;
     }
 
     private void cleanupOrphanedHolograms() {

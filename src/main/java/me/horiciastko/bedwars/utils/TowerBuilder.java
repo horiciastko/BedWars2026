@@ -13,10 +13,10 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 public class TowerBuilder {
 
-    public static void build(Player player, Arena arena, Location origin) {
+    public static boolean build(Player player, Arena arena, Location origin) {
         Team team = BedWars.getInstance().getGameManager().getPlayerTeam(arena, player);
         if (team == null)
-            return;
+            return false;
 
         Material woolMat = getWoolMaterial(team);
         BlockFace facing = player.getFacing();
@@ -50,6 +50,10 @@ public class TowerBuilder {
         final Location base = start.clone().add(ox, 0, oz);
         final int height = 8;
 
+        if (!canBuildAt(base, height, facing, arena)) {
+            return false;
+        }
+
         new BukkitRunnable() {
             int y = 0;
 
@@ -64,13 +68,6 @@ public class TowerBuilder {
                     for (int z = 0; z < 4; z++) {
                         Location loc = base.clone().add(x, y, z);
                         Block block = loc.getBlock();
-
-                        if (block.getType() != Material.AIR &&
-                                block.getType() != Material.WATER &&
-                                block.getType() != Material.LAVA &&
-                                !arena.getPlacedBlocks().contains(block.getLocation())) {
-                            continue;
-                        }
 
                         boolean isEdge = (x == 0 || x == 3 || z == 0 || z == 3);
 
@@ -98,22 +95,20 @@ public class TowerBuilder {
                                         break;
                                 }
                                 if (isDoor) {
-                                    arena.getPlacedBlocks().add(loc);
-                                    block.setType(Material.AIR);
                                     continue;
                                 }
                             }
 
-                            if (y == height - 1) {
-                                block.setType(woolMat);
-                            } else {
-                                block.setType(woolMat);
-                            }
-                            arena.getPlacedBlocks().add(loc);
-                        } else {
-                            if (y == height - 1) {
+                            if (isReplaceable(block)) {
                                 block.setType(woolMat);
                                 arena.getPlacedBlocks().add(loc);
+                            }
+                        } else {
+                            if (y == height - 1) {
+                                if (isReplaceable(block)) {
+                                    block.setType(woolMat);
+                                    arena.getPlacedBlocks().add(loc);
+                                }
                             } else {
                                 boolean countsAsLadder = false;
                                 BlockFace ladderFace = null;
@@ -147,15 +142,15 @@ public class TowerBuilder {
                                 }
 
                                 if (countsAsLadder) {
-                                    block.setType(Material.LADDER);
-                                    if (block.getBlockData() instanceof Ladder) {
-                                        Ladder data = (Ladder) block.getBlockData();
-                                        data.setFacing(ladderFace);
-                                        block.setBlockData(data);
+                                    if (isReplaceable(block)) {
+                                        block.setType(Material.LADDER);
+                                        if (block.getBlockData() instanceof Ladder) {
+                                            Ladder data = (Ladder) block.getBlockData();
+                                            data.setFacing(ladderFace);
+                                            block.setBlockData(data);
+                                        }
+                                        arena.getPlacedBlocks().add(loc);
                                     }
-                                    arena.getPlacedBlocks().add(loc);
-                                } else {
-                                    block.setType(Material.AIR);
                                 }
                             }
                         }
@@ -167,6 +162,77 @@ public class TowerBuilder {
         }.runTaskTimer(BedWars.getInstance(), 0L, 2L);
 
         BedWars.getInstance().getSoundManager().playSound(origin, "tower-build");
+        return true;
+    }
+
+    private static boolean canBuildAt(Location base, int height, BlockFace facing, Arena arena) {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < 4; x++) {
+                for (int z = 0; z < 4; z++) {
+                    if (!willPlaceBlock(x, y, z, height, facing)) {
+                        continue;
+                    }
+                    Block block = base.clone().add(x, y, z).getBlock();
+                    if (!isReplaceable(block) || arena.getPlacedBlocks().contains(block.getLocation())) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    private static boolean willPlaceBlock(int x, int y, int z, int height, BlockFace facing) {
+        boolean isEdge = (x == 0 || x == 3 || z == 0 || z == 3);
+
+        if (isEdge) {
+            if (y < 2) {
+                boolean isDoor = false;
+                switch (facing) {
+                    case NORTH:
+                        isDoor = z == 3 && (x == 1 || x == 2);
+                        break;
+                    case SOUTH:
+                        isDoor = z == 0 && (x == 1 || x == 2);
+                        break;
+                    case EAST:
+                        isDoor = x == 0 && (z == 1 || z == 2);
+                        break;
+                    case WEST:
+                        isDoor = x == 3 && (z == 1 || z == 2);
+                        break;
+                    default:
+                        break;
+                }
+                if (isDoor) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        if (y == height - 1) {
+            return true;
+        }
+
+        switch (facing) {
+            case NORTH:
+                return z == 0 && x == 1;
+            case SOUTH:
+                return z == 3 && x == 1;
+            case EAST:
+                return x == 3 && z == 1;
+            case WEST:
+                return x == 0 && z == 1;
+            default:
+                return false;
+        }
+    }
+
+    private static boolean isReplaceable(Block block) {
+        Material type = block.getType();
+        return type == Material.AIR || type == Material.CAVE_AIR || type == Material.VOID_AIR
+                || type == Material.WATER || type == Material.LAVA;
     }
 
     private static Material getWoolMaterial(Team team) {
