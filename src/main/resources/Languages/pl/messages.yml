@@ -400,6 +400,7 @@ admin-leaderboard-nearest-removed: "&aUsunięto najbliższy hologram leaderboard
 admin-leaderboard-empty: "&eBrak postawionych hologramów leaderboardu."
 admin-leaderboard-list-header: "&6&lHologramy Leaderboardu &7(%count%)"
 admin-leaderboard-refreshed: "&aOdświeżono wszystkie hologramy leaderboardu."
+leaderboard-no-data: "Brak danych"
 
 # --- DB Admin ---
 admin-db-usage: "&cUżycie: /bw admin db <migrate-split|status>"
@@ -431,6 +432,8 @@ setup-usage: "&cUżycie: /bw setupArena <nazwa>"
 setup-created: "&aUtworzono nową arenę: %name%"
 setup-editing: "&aEdytujesz teraz arenę: %name%"
 setup-instructions: "&eUżyj komend jak /bw setSpawn, /bw setBed itp. aby skonfigurować."
+setup-edit-stopped-resetting: "&c[BedWars] Arena %name% zaczęła się resetować — tryb edycji wyłączony."
+arena-auto-disabled-editing: "&e[BedWars] Arena &6%name% &ezostała automatycznie wyłączona. Pamiętaj ją włączyć po ukończeniu konfiguracji!"
 
 # --- Zarządzanie Areną ---
 arena-teleported: "&a[BedWars] Przeteleportowano do świata areny: %world%"

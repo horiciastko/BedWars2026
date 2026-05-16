@@ -99,6 +99,7 @@ sections:
           - "&7safe distance."
       speed:
         material: POTION
+        potion_type: SPEED
         name: "&fSpeed II (45 Seconds)"
         amount: 1
         cost: 1
@@ -166,6 +167,7 @@ sections:
           - "&7Ammunition for your bows."
       jump:
         material: POTION
+        potion_type: JUMP
         name: "&fJump Boost V (45 Seconds)"
         amount: 1
         cost: 1
@@ -453,6 +455,7 @@ sections:
     items:
       speed:
         material: POTION
+        potion_type: SPEED
         shop_name: "&fSpeed II (45s)"
         inventory_name: "&fSpeed II Potion"
         amount: 1
@@ -461,6 +464,7 @@ sections:
         slot: 19
       jump:
         material: POTION
+        potion_type: JUMP
         shop_name: "&fJump Boost V (45s)"
         inventory_name: "&fJump Boost V Potion"
         amount: 1
@@ -469,6 +473,7 @@ sections:
         slot: 20
       invisibility:
         material: POTION
+        potion_type: INVISIBILITY
         shop_name: "&fInvisibility (30s)"
         inventory_name: "&fInvisibility Potion"
         amount: 1

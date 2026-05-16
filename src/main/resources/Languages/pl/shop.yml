@@ -99,6 +99,7 @@ sections:
           - "&7w bezpiecznej odległości."
       speed:
         material: POTION
+        potion_type: SPEED
         name: "&fSzybkość II (45 Sekund)"
         amount: 1
         cost: 1
@@ -166,6 +167,7 @@ sections:
           - "&7Amunicja do twoich łuków."
       jump:
         material: POTION
+        potion_type: JUMP
         name: "&fSkakanie V (45 Sekund)"
         amount: 1
         cost: 1
@@ -452,6 +454,7 @@ sections:
     items:
       speed:
         material: POTION
+        potion_type: SPEED
         shop_name: "&fSzybkość II (45s)"
         inventory_name: "&fMikstura Szybkości II"
         amount: 1
@@ -460,6 +463,7 @@ sections:
         slot: 19
       jump:
         material: POTION
+        potion_type: JUMP
         shop_name: "&fSkakanie V (45s)"
         inventory_name: "&fMikstura Skakania V"
         amount: 1
@@ -468,6 +472,7 @@ sections:
         slot: 20
       invisibility:
         material: POTION
+        potion_type: INVISIBILITY
         shop_name: "&fNiewidzialność (30s)"
         inventory_name: "&fMikstura Niewidzialności"
         amount: 1
