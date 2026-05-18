@@ -3,6 +3,7 @@ package me.horiciastko.bedwars.commands;
 import lombok.RequiredArgsConstructor;
 import me.horiciastko.bedwars.BedWars;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
@@ -65,113 +66,113 @@ public class PartyCommand implements SubCommand {
 
     private void invite(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + "&cUsage: /bw party invite <player>");
+            sendColored(player, prefix() + "&cUsage: /bw party invite <player>");
             return;
         }
 
         Player target = Bukkit.getPlayerExact(args[2]);
         if (target == null || !target.isOnline()) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-invite-offline", "&cThat player is not online."));
+            sendColored(player, prefix() + cfg("party-invite-offline", "&cThat player is not online."));
             return;
         }
         if (target.getUniqueId().equals(player.getUniqueId())) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-invite-self", "&cYou cannot invite yourself."));
+            sendColored(player, prefix() + cfg("party-invite-self", "&cYou cannot invite yourself."));
             return;
         }
 
         boolean ok = plugin.getPartyManager().invite(player, target);
         if (!ok) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + "&cYou must be the party leader to invite players.");
+            sendColored(player, prefix() + "&cYou must be the party leader to invite players.");
             return;
         }
 
-        String inviteSent = plugin.getConfigManager().getMessagesConfig().getString("party-invite-sent", "&aInvited %player% to your party.").replace("%player%", target.getName());
-        String inviteReceived = plugin.getConfigManager().getMessagesConfig().getString("party-invite-received", "&e%player% invited you to a party. Type /bw party accept to join.").replace("%player%", player.getName());
+        String inviteSent = cfg("party-invite-sent", "&aInvited %player% to your party.").replace("%player%", target.getName());
+        String inviteReceived = cfg("party-invite-received", "&e%player% invited you to a party. Type /bw party accept to join.").replace("%player%", player.getName());
         
-        player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + inviteSent);
-        target.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + inviteReceived);
+        sendColored(player, prefix() + inviteSent);
+        sendColored(target, prefix() + inviteReceived);
     }
 
     private void accept(Player player) {
         UUID leaderId = plugin.getPartyManager().getInviteLeader(player.getUniqueId());
         if (leaderId == null) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-invite-invalid", "&cYou do not have any pending party invite."));
+            sendColored(player, prefix() + cfg("party-invite-invalid", "&cYou do not have any pending party invite."));
             return;
         }
 
         boolean ok = plugin.getPartyManager().acceptInvite(player);
         if (!ok) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-invite-expired", "&cYour party invite expired or is no longer valid."));
+            sendColored(player, prefix() + cfg("party-invite-expired", "&cYour party invite expired or is no longer valid."));
             return;
         }
 
         Player leader = Bukkit.getPlayer(leaderId);
         String leaderName = leader != null ? leader.getName() : "leader";
         
-        String joinMsg = plugin.getConfigManager().getMessagesConfig().getString("party-join-success", "&aJoined %leader%'s party.").replace("%leader%", leaderName);
-        String notifyMsg = plugin.getConfigManager().getMessagesConfig().getString("party-join-notify", "&a%player% joined your party.").replace("%player%", player.getName());
+        String joinMsg = cfg("party-join-success", "&aJoined %leader%'s party.").replace("%leader%", leaderName);
+        String notifyMsg = cfg("party-join-notify", "&a%player% joined your party.").replace("%player%", player.getName());
 
-        player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + joinMsg);
+        sendColored(player, prefix() + joinMsg);
         if (leader != null) {
-            leader.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + notifyMsg);
+            sendColored(leader, prefix() + notifyMsg);
         }
     }
 
     private void leave(Player player) {
         me.horiciastko.bedwars.logic.PartyManager.Party party = plugin.getPartyManager().getParty(player.getUniqueId());
         if (party == null) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-not-in-party", "&cYou are not in a party."));
+            sendColored(player, prefix() + cfg("party-not-in-party", "&cYou are not in a party."));
             return;
         }
 
         boolean wasLeader = party.getLeader().equals(player.getUniqueId());
         plugin.getPartyManager().leaveParty(player.getUniqueId());
 
-        String prefix = plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ");
+        String prefix = prefix();
         if (wasLeader) {
-            player.sendMessage(prefix + plugin.getConfigManager().getMessagesConfig().getString("party-leave-as-leader", "&aYou left and disbanded your party."));
+            sendColored(player, prefix + cfg("party-leave-as-leader", "&aYou left and disbanded your party."));
         } else {
-            String leaveMsg = plugin.getConfigManager().getMessagesConfig().getString("party-leave-title", "&eYou left the party.");
-            player.sendMessage(prefix + leaveMsg);
+            String leaveMsg = cfg("party-leave-title", "&eYou left the party.");
+            sendColored(player, prefix + leaveMsg);
             
             Player leader = Bukkit.getPlayer(party.getLeader());
             if (leader != null) {
-                String notifyMsg = plugin.getConfigManager().getMessagesConfig().getString("party-leave-notify", "&e%player% left your party.").replace("%player%", player.getName());
-                leader.sendMessage(prefix + notifyMsg);
+                String notifyMsg = cfg("party-leave-notify", "&e%player% left your party.").replace("%player%", player.getName());
+                sendColored(leader, prefix + notifyMsg);
             }
         }
     }
 
     private void kick(Player player, String[] args) {
         if (args.length < 3) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + "&cUsage: /bw party kick <player>");
+            sendColored(player, prefix() + "&cUsage: /bw party kick <player>");
             return;
         }
 
         Player target = Bukkit.getPlayerExact(args[2]);
         if (target == null) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-invite-offline", "&cThat player is not online."));
+            sendColored(player, prefix() + cfg("party-invite-offline", "&cThat player is not online."));
             return;
         }
 
         boolean ok = plugin.getPartyManager().kick(player.getUniqueId(), target.getUniqueId());
         if (!ok) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-kick-no-permission", "&cYou must be the party leader to kick this player."));
+            sendColored(player, prefix() + cfg("party-kick-no-permission", "&cYou must be the party leader to kick this player."));
             return;
         }
 
-        String prefix = plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ");
-        String kickMsg = plugin.getConfigManager().getMessagesConfig().getString("party-kick-success", "&eKicked %player% from your party.").replace("%player%", target.getName());
-        String targetMsg = plugin.getConfigManager().getMessagesConfig().getString("party-kick-target", "&cYou were kicked from the party.");
+        String prefix = prefix();
+        String kickMsg = cfg("party-kick-success", "&eKicked %player% from your party.").replace("%player%", target.getName());
+        String targetMsg = cfg("party-kick-target", "&cYou were kicked from the party.");
         
-        player.sendMessage(prefix + kickMsg);
-        target.sendMessage(prefix + targetMsg);
+        sendColored(player, prefix + kickMsg);
+        sendColored(target, prefix + targetMsg);
     }
 
     private void list(Player player) {
         me.horiciastko.bedwars.logic.PartyManager.Party party = plugin.getPartyManager().getParty(player.getUniqueId());
         if (party == null) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-not-in-party", "&cYou are not in a party."));
+            sendColored(player, prefix() + cfg("party-not-in-party", "&cYou are not in a party."));
             return;
         }
 
@@ -186,42 +187,54 @@ public class PartyCommand implements SubCommand {
                 })
                 .collect(Collectors.joining("§7, §f"));
 
-        String prefix = plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ");
-        String leaderMsg = plugin.getConfigManager().getMessagesConfig().getString("party-list-leader", "&eParty Leader: &f%leader%").replace("%leader%", nameOf(party.getLeader()));
-        String membersMsg = plugin.getConfigManager().getMessagesConfig().getString("party-list-members", "&eMembers (%count%): &f%members%")
+        String prefix = prefix();
+        String leaderMsg = cfg("party-list-leader", "&eParty Leader: &f%leader%").replace("%leader%", nameOf(party.getLeader()));
+        String membersMsg = cfg("party-list-members", "&eMembers (%count%): &f%members%")
                 .replace("%count%", String.valueOf(party.getMembers().size()))
                 .replace("%members%", names);
         
-        player.sendMessage(prefix + leaderMsg);
-        player.sendMessage(prefix + membersMsg);
+        sendColored(player, prefix + leaderMsg);
+        sendColored(player, prefix + membersMsg);
     }
 
     private void disband(Player player) {
         if (!plugin.getPartyManager().isLeader(player.getUniqueId())) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-not-leader", "&cOnly party leader can disband the party."));
+            sendColored(player, prefix() + cfg("party-not-leader", "&cOnly party leader can disband the party."));
             return;
         }
 
         me.horiciastko.bedwars.logic.PartyManager.Party party = plugin.getPartyManager().getParty(player.getUniqueId());
         if (party == null) {
-            player.sendMessage(plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ") + plugin.getConfigManager().getMessagesConfig().getString("party-not-in-party", "&cYou are not in a party."));
+            sendColored(player, prefix() + cfg("party-not-in-party", "&cYou are not in a party."));
             return;
         }
 
-        String disbandMsg = plugin.getConfigManager().getMessagesConfig().getString("party-disband-notify", "&eParty was disbanded by the leader.");
-        String prefix = plugin.getConfigManager().getMessagesConfig().getString("prefix", "&b&lBEDWARS &8» ");
+        String disbandMsg = cfg("party-disband-notify", "&eParty was disbanded by the leader.");
+        String prefix = prefix();
         
         for (UUID member : party.getMembers()) {
             if (!member.equals(player.getUniqueId())) {
                 Player online = Bukkit.getPlayer(member);
                 if (online != null) {
-                    online.sendMessage(prefix + disbandMsg);
+                    sendColored(online, prefix + disbandMsg);
                 }
             }
         }
 
         plugin.getPartyManager().disband(player.getUniqueId());
-        player.sendMessage(prefix + plugin.getConfigManager().getMessagesConfig().getString("party-disband-success", "&eParty disbanded."));
+        sendColored(player, prefix + cfg("party-disband-success", "&eParty disbanded."));
+    }
+
+    private String cfg(String path, String def) {
+        return plugin.getConfigManager().getMessagesConfig().getString(path, def);
+    }
+
+    private String prefix() {
+        return cfg("prefix", "&b&lBEDWARS &8» ");
+    }
+
+    private void sendColored(Player player, String message) {
+        player.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
     }
 
     private String nameOf(UUID uuid) {

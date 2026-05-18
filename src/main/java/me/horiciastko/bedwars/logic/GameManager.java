@@ -476,8 +476,13 @@ public class GameManager {
     }
 
     private void assignTeams(Arena arena) {
+        boolean randomAssignment = plugin.getConfig().getBoolean("game.random-team-assignment", true);
+        java.util.Random random = randomAssignment ? java.util.concurrent.ThreadLocalRandom.current() : null;
+
         List<Player> shuffledPlayers = new ArrayList<>(arena.getPlayers());
-        java.util.Collections.shuffle(shuffledPlayers);
+        if (randomAssignment) {
+            java.util.Collections.shuffle(shuffledPlayers, random);
+        }
 
         Map<UUID, Team> teamsMap = new ConcurrentHashMap<>();
         int playersPerTeam = arena.getMode().getPlayersPerTeam();
@@ -486,21 +491,20 @@ public class GameManager {
             team.getMembers().clear();
         }
 
+        List<Team> randomizedTeams = new ArrayList<>(arena.getTeams());
+        if (randomAssignment) {
+            java.util.Collections.shuffle(randomizedTeams, random);
+        }
+
         List<List<Player>> groups = plugin.getPartyManager().buildAssignmentGroups(shuffledPlayers, playersPerTeam);
         groups.sort((a, b) -> Integer.compare(b.size(), a.size()));
 
         for (List<Player> group : groups) {
-            Team target = arena.getTeams().stream()
-                    .filter(team -> team.getMembers().size() + group.size() <= playersPerTeam)
-                    .min(java.util.Comparator.comparingInt(team -> team.getMembers().size()))
-                    .orElse(null);
+            Team target = findLeastFilledTeam(randomizedTeams, group.size(), playersPerTeam, random);
 
             if (target == null) {
                 for (Player player : group) {
-                    Team singleTarget = arena.getTeams().stream()
-                            .filter(team -> team.getMembers().size() < playersPerTeam)
-                            .min(java.util.Comparator.comparingInt(team -> team.getMembers().size()))
-                            .orElse(null);
+                    Team singleTarget = findLeastFilledTeam(randomizedTeams, 1, playersPerTeam, random);
 
                     if (singleTarget == null) {
                         continue;
@@ -519,6 +523,34 @@ public class GameManager {
         }
 
         playerTeams.put(arena, teamsMap);
+    }
+
+    private Team findLeastFilledTeam(List<Team> teams, int neededSlots, int playersPerTeam, java.util.Random random) {
+        int minSize = Integer.MAX_VALUE;
+        List<Team> candidates = new ArrayList<>();
+
+        for (Team team : teams) {
+            int size = team.getMembers().size();
+            if (size + neededSlots > playersPerTeam) {
+                continue;
+            }
+
+            if (size < minSize) {
+                minSize = size;
+                candidates.clear();
+                candidates.add(team);
+            } else if (size == minSize) {
+                candidates.add(team);
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        if (random == null) {
+            return candidates.get(0);
+        }
+        return candidates.get(random.nextInt(candidates.size()));
     }
 
     public Team getPlayerTeam(Arena arena, Player player) {
@@ -1494,6 +1526,13 @@ public class GameManager {
     public void setPlayerHasShears(UUID uuid, boolean has) {
         if (has) playerHasShears.add(uuid);
         else playerHasShears.remove(uuid);
+    }
+
+    public void resetPlayerPermanentPurchases(UUID uuid) {
+        playerPickaxeTiers.remove(uuid);
+        playerAxeTiers.remove(uuid);
+        playerArmorTiers.remove(uuid);
+        playerHasShears.remove(uuid);
     }
 
     public void normalizeSwordInventory(Player player, Team team) {

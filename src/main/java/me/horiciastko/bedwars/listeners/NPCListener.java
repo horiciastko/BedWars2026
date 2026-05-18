@@ -77,19 +77,19 @@ public class NPCListener implements Listener {
         }
         
         if (actionType.equalsIgnoreCase("solo")) {
-            new me.horiciastko.bedwars.gui.ArenaSelectorGUI(me.horiciastko.bedwars.models.Arena.ArenaMode.SOLO).open(player);
+            new me.horiciastko.bedwars.gui.ModeJoinGUI(me.horiciastko.bedwars.models.Arena.ArenaMode.SOLO).open(player);
             return;
         }
         if (actionType.equalsIgnoreCase("duo") || actionType.equalsIgnoreCase("doubles")) {
-            new me.horiciastko.bedwars.gui.ArenaSelectorGUI(me.horiciastko.bedwars.models.Arena.ArenaMode.DUO).open(player);
+            new me.horiciastko.bedwars.gui.ModeJoinGUI(me.horiciastko.bedwars.models.Arena.ArenaMode.DUO).open(player);
             return;
         }
         if (actionType.equalsIgnoreCase("trio") || actionType.equalsIgnoreCase("3v3v3v3")) {
-            new me.horiciastko.bedwars.gui.ArenaSelectorGUI(me.horiciastko.bedwars.models.Arena.ArenaMode.TRIO).open(player);
+            new me.horiciastko.bedwars.gui.ModeJoinGUI(me.horiciastko.bedwars.models.Arena.ArenaMode.TRIO).open(player);
             return;
         }
         if (actionType.equalsIgnoreCase("quad") || actionType.equalsIgnoreCase("squad") || actionType.equalsIgnoreCase("4v4v4v4")) {
-            new me.horiciastko.bedwars.gui.ArenaSelectorGUI(me.horiciastko.bedwars.models.Arena.ArenaMode.SQUAD).open(player);
+            new me.horiciastko.bedwars.gui.ModeJoinGUI(me.horiciastko.bedwars.models.Arena.ArenaMode.SQUAD).open(player);
             return;
         }
         
@@ -98,7 +98,7 @@ public class NPCListener implements Listener {
             try {
                 me.horiciastko.bedwars.models.Arena.ArenaMode mode = me.horiciastko.bedwars.models.Arena.ArenaMode
                         .valueOf(modeStr.toUpperCase());
-                new me.horiciastko.bedwars.gui.ArenaSelectorGUI(mode).open(player);
+                new me.horiciastko.bedwars.gui.ModeJoinGUI(mode).open(player);
             } catch (IllegalArgumentException e) {
                 player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "npc-invalid-mode").replace("%mode%", modeStr));
             }

@@ -677,20 +677,20 @@ public class VanillaNPCImpl implements BedWarsNPC {
         }
 
         if (actionType.equalsIgnoreCase("solo")) {
-            new me.horiciastko.bedwars.gui.ArenaSelectorGUI(Arena.ArenaMode.SOLO).open(player);
+            new me.horiciastko.bedwars.gui.ModeJoinGUI(Arena.ArenaMode.SOLO).open(player);
             return;
         }
         if (actionType.equalsIgnoreCase("duo") || actionType.equalsIgnoreCase("doubles")) {
-            new me.horiciastko.bedwars.gui.ArenaSelectorGUI(Arena.ArenaMode.DUO).open(player);
+            new me.horiciastko.bedwars.gui.ModeJoinGUI(Arena.ArenaMode.DUO).open(player);
             return;
         }
         if (actionType.equalsIgnoreCase("trio") || actionType.equalsIgnoreCase("3v3v3v3")) {
-            new me.horiciastko.bedwars.gui.ArenaSelectorGUI(Arena.ArenaMode.TRIO).open(player);
+            new me.horiciastko.bedwars.gui.ModeJoinGUI(Arena.ArenaMode.TRIO).open(player);
             return;
         }
         if (actionType.equalsIgnoreCase("quad") || actionType.equalsIgnoreCase("squad")
                 || actionType.equalsIgnoreCase("4v4v4v4")) {
-            new me.horiciastko.bedwars.gui.ArenaSelectorGUI(Arena.ArenaMode.SQUAD).open(player);
+            new me.horiciastko.bedwars.gui.ModeJoinGUI(Arena.ArenaMode.SQUAD).open(player);
             return;
         }
 
@@ -698,7 +698,7 @@ public class VanillaNPCImpl implements BedWarsNPC {
         if (modeStr != null) {
             try {
                 Arena.ArenaMode mode = Arena.ArenaMode.valueOf(modeStr.toUpperCase());
-                new me.horiciastko.bedwars.gui.ArenaSelectorGUI(mode).open(player);
+                new me.horiciastko.bedwars.gui.ModeJoinGUI(mode).open(player);
                 return;
             } catch (IllegalArgumentException e) {
                 player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "npc-invalid-mode").replace("%mode%", modeStr));

@@ -124,6 +124,11 @@ public class AdminCommand implements SubCommand {
             return;
         }
 
+        if (args[1].equalsIgnoreCase("settings")) {
+            handleAdminSettings(player, args);
+            return;
+        }
+
         if (args[1].equalsIgnoreCase("npc")) {
             if (args.length < 3) {
                 player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-npc-usage"));
@@ -551,6 +556,7 @@ public class AdminCommand implements SubCommand {
             options.add("setlobby");
             options.add("leaderboard");
             options.add("db");
+            options.add("settings");
             options.add("migrate");
             options.add("migrate-split");
             return filter(options, args[1]);
@@ -584,8 +590,16 @@ public class AdminCommand implements SubCommand {
                 options.add("status");
                 options.add("migrate");
                 options.add("migrate-split");
+            } else if (args[1].equalsIgnoreCase("settings")) {
+                options.add("show");
+                options.add("multimode");
+                options.add("randomteams");
             }
             return filter(options, args[2]);
+        }
+
+        if (args.length == 4 && args[1].equalsIgnoreCase("settings")) {
+            return filter(java.util.Arrays.asList("on", "off"), args[3]);
         }
 
         if (args.length == 4) {
@@ -663,9 +677,53 @@ public class AdminCommand implements SubCommand {
         player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-help-start"));
         player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-help-lang"));
         player.sendMessage(plugin.getLanguageManager().getMessage(player.getUniqueId(), "admin-help-setlobby"));
+        player.sendMessage("§7/bw admin settings <show|multimode|randomteams> [on|off] §8- §fSzybkie ustawienia globalne");
         player.sendMessage("§7/bw admin leaderboard <create|remove|list|refresh> §8- §fLeaderboard hologramy");
         player.sendMessage("§7/bw admin migrate §8- §fSzybka migracja legacy DB do split DB");
         player.sendMessage("§7/bw admin db <status|migrate-split> §8- §fMigracja danych do split DB");
         player.sendMessage(" ");
+    }
+
+    private void handleAdminSettings(Player player, String[] args) {
+        if (args.length == 2 || args[2].equalsIgnoreCase("show")) {
+            boolean multiMode = plugin.getConfig().getBoolean("join-gui.allow-multi-mode-arenas", true);
+            boolean randomTeams = plugin.getConfig().getBoolean("game.random-team-assignment", true);
+            player.sendMessage(" ");
+            player.sendMessage("§6§lBedWars Settings");
+            player.sendMessage("§7multimode: " + (multiMode ? "§aON" : "§cOFF") + " §8- reuse empty waiting arenas for selected mode");
+            player.sendMessage("§7randomteams: " + (randomTeams ? "§aON" : "§cOFF") + " §8- random/fair tie-break team assignment");
+            player.sendMessage("§8Use: §f/bw admin settings <multimode|randomteams> <on|off>");
+            player.sendMessage(" ");
+            return;
+        }
+
+        if (args.length < 4) {
+            player.sendMessage("§cUsage: /bw admin settings <multimode|randomteams> <on|off>");
+            return;
+        }
+
+        String key = args[2].toLowerCase();
+        String value = args[3].toLowerCase();
+        if (!value.equals("on") && !value.equals("off")) {
+            player.sendMessage("§cValue must be on/off.");
+            return;
+        }
+        boolean enabled = value.equals("on");
+
+        if (key.equals("multimode")) {
+            plugin.getConfig().set("join-gui.allow-multi-mode-arenas", enabled);
+            plugin.saveConfig();
+            player.sendMessage("§7[BedWars] multimode: " + (enabled ? "§aON" : "§cOFF"));
+            return;
+        }
+
+        if (key.equals("randomteams")) {
+            plugin.getConfig().set("game.random-team-assignment", enabled);
+            plugin.saveConfig();
+            player.sendMessage("§7[BedWars] randomteams: " + (enabled ? "§aON" : "§cOFF"));
+            return;
+        }
+
+        player.sendMessage("§cUnknown setting. Use multimode or randomteams.");
     }
 }

@@ -51,6 +51,12 @@ public class ScoreboardManager {
 
     public void updateScoreboard(Player player) {
         Arena arena = plugin.getArenaManager().getPlayerArena(player);
+        Arena editArena = plugin.getArenaManager().getEditArena(player);
+
+        if (shouldDisableScoreboard(player, arena, editArena)) {
+            clearPlayerBoard(player);
+            return;
+        }
 
         Scoreboard board = boards.computeIfAbsent(player.getUniqueId(),
                 uuid -> Bukkit.getScoreboardManager().getNewScoreboard());
@@ -76,7 +82,6 @@ public class ScoreboardManager {
         }
 
         List<String> linesTemplate;
-        Arena editArena = plugin.getArenaManager().getEditArena(player);
 
         if (arena == null) {
             if (editArena != null) {
@@ -149,6 +154,45 @@ public class ScoreboardManager {
 
         if (player.getScoreboard() != board) {
             player.setScoreboard(board);
+        }
+    }
+
+    private boolean shouldDisableScoreboard(Player player, Arena arena, Arena editArena) {
+        if (arena != null || editArena != null) {
+            return false;
+        }
+
+        List<String> disabledWorlds = plugin.getConfig().getStringList("scoreboard.disabled-worlds");
+        if (disabledWorlds == null || disabledWorlds.isEmpty()) {
+            return false;
+        }
+
+        String worldName = player.getWorld() != null ? player.getWorld().getName() : null;
+        if (worldName == null) {
+            return false;
+        }
+
+        for (String disabled : disabledWorlds) {
+            if (disabled != null && worldName.equalsIgnoreCase(disabled.trim())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void clearPlayerBoard(Player player) {
+        boards.remove(player.getUniqueId());
+        lastLines.remove(player.getUniqueId());
+
+        org.bukkit.scoreboard.ScoreboardManager manager = Bukkit.getScoreboardManager();
+        if (manager == null) {
+            return;
+        }
+
+        Scoreboard mainBoard = manager.getMainScoreboard();
+        if (player.getScoreboard() != mainBoard) {
+            player.setScoreboard(mainBoard);
         }
     }
 

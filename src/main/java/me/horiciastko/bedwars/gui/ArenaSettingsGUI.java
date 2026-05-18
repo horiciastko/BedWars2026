@@ -142,6 +142,21 @@ public class ArenaSettingsGUI extends BaseGUI {
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━")
                                 .build());
 
+                boolean multiModeEnabled = BedWars.getInstance().getConfig()
+                                .getBoolean("join-gui.allow-multi-mode-arenas", true);
+                inventory.setItem(22, new ItemBuilder(multiModeEnabled ? Material.LIME_CONCRETE : Material.GRAY_CONCRETE)
+                                .setName("§b§lJoin Mode Reuse")
+                                .setLore(
+                                                "§8━━━━━━━━━━━━━━━━━━━━━━━",
+                                                "§7Empty waiting arenas can",
+                                                "§7be reused for selected mode.",
+                                                "",
+                                                "§7Current: " + (multiModeEnabled ? "§aON" : "§cOFF"),
+                                                "",
+                                                "§e▸ Click to toggle globally",
+                                                "§8━━━━━━━━━━━━━━━━━━━━━━━")
+                                .build());
+
                 boolean enabled = arena.isEnabled();
                 inventory.setItem(23,
                                 new ItemBuilder(enabled ? com.cryptomorin.xseries.XMaterial.LIME_DYE
@@ -255,6 +270,14 @@ public class ArenaSettingsGUI extends BaseGUI {
                                 break;
                         case 21:
                                 new ArenaGeneralSettingsGUI(arena).open(player);
+                                break;
+                        case 22:
+                                boolean current = BedWars.getInstance().getConfig()
+                                                .getBoolean("join-gui.allow-multi-mode-arenas", true);
+                                BedWars.getInstance().getConfig().set("join-gui.allow-multi-mode-arenas", !current);
+                                BedWars.getInstance().saveConfig();
+                                player.sendMessage("§7[BedWars] Join mode reuse: " + (!current ? "§aON" : "§cOFF"));
+                                open(player);
                                 break;
                         case 23:
                                 arena.setEnabled(!arena.isEnabled());

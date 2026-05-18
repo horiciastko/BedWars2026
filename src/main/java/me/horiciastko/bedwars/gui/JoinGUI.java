@@ -25,7 +25,7 @@ public class JoinGUI extends BaseGUI {
 
     @Override
     public void setContents(Player player) {
-        ItemStack filler = new ItemBuilder(XMaterial.GRAY_STAINED_GLASS_PANE)
+        ItemStack filler = new ItemBuilder(XMaterial.BLACK_STAINED_GLASS_PANE)
                 .setName(" ")
                 .build();
         fillBorders(filler);
@@ -47,6 +47,7 @@ public class JoinGUI extends BaseGUI {
 
             Arena.ArenaMode mode = findMode(playersPerTeam);
             int online = mode != null ? getOnlineCount(mode) : 0;
+            int availableArenas = mode != null ? getAvailableArenaCount(mode) : 0;
 
             List<String> processedLore = java.util.Arrays.asList(
                     ChatColor.translateAlternateColorCodes('&',
@@ -54,6 +55,7 @@ public class JoinGUI extends BaseGUI {
                     " ",
                     ChatColor.translateAlternateColorCodes('&',
                             plugin.getLanguageManager().getMessage(player.getUniqueId(), "config-join-lore-online") + " &f" + online),
+                        ChatColor.translateAlternateColorCodes('&', "&7Available Arenas: &f" + availableArenas),
                     " ",
                     ChatColor.translateAlternateColorCodes('&',
                             plugin.getLanguageManager().getMessage(player.getUniqueId(), "config-join-lore-quick-join")),
@@ -80,8 +82,17 @@ public class JoinGUI extends BaseGUI {
 
     private int getOnlineCount(Arena.ArenaMode mode) {
         return (int) plugin.getArenaManager().getArenas().stream()
-                .filter(a -> a.getMode() == mode)
+                .filter(a -> canUseArenaForMode(a, mode))
                 .flatMap(a -> a.getPlayers().stream())
+                .count();
+    }
+
+    private int getAvailableArenaCount(Arena.ArenaMode mode) {
+        return (int) plugin.getArenaManager().getArenas().stream()
+                .filter(a -> a.isEnabled())
+                .filter(a -> a.getState() == Arena.GameState.WAITING || a.getState() == Arena.GameState.STARTING)
+                .filter(a -> a.getPlayers().size() < a.getMaxPlayers())
+                .filter(a -> canUseArenaForMode(a, mode))
                 .count();
     }
 
@@ -100,12 +111,7 @@ public class JoinGUI extends BaseGUI {
                 Arena.ArenaMode mode = findMode(playersPerTeam);
 
                 if (mode != null) {
-                    if (clickType.isRightClick()) {
-                        player.closeInventory();
-                        new ArenaSelectorGUI(mode).open(player);
-                    } else {
-                        joinQuickGame(player, mode);
-                    }
+                    new ModeJoinGUI(mode).open(player);
                 }
                 return;
             }
@@ -114,10 +120,18 @@ public class JoinGUI extends BaseGUI {
 
     private void joinQuickGame(Player player, Arena.ArenaMode mode) {
         List<Arena> available = plugin.getArenaManager().getArenas().stream()
-                .filter(a -> a.getMode() == mode && a.isEnabled())
+                .filter(a -> a.isEnabled())
                 .filter(a -> a.getState() == Arena.GameState.WAITING || a.getState() == Arena.GameState.STARTING)
                 .filter(a -> a.getPlayers().size() < a.getMaxPlayers())
-                .sorted((a1, a2) -> Integer.compare(a2.getPlayers().size(), a1.getPlayers().size()))
+                .filter(a -> canUseArenaForMode(a, mode))
+                .sorted((a1, a2) -> {
+                    int statePrio1 = a1.getState() == Arena.GameState.STARTING ? 0 : 1;
+                    int statePrio2 = a2.getState() == Arena.GameState.STARTING ? 0 : 1;
+                    if (statePrio1 != statePrio2) {
+                        return Integer.compare(statePrio1, statePrio2);
+                    }
+                    return Integer.compare(a2.getPlayers().size(), a1.getPlayers().size());
+                })
                 .collect(Collectors.toList());
 
         if (available.isEmpty()) {
@@ -127,6 +141,27 @@ public class JoinGUI extends BaseGUI {
             return;
         }
 
-        plugin.getArenaManager().joinArena(player, available.get(0));
+        Arena target = available.get(0);
+        if (plugin.getConfig().getBoolean("join-gui.allow-multi-mode-arenas", true)
+                && target.getState() == Arena.GameState.WAITING && target.getPlayers().isEmpty()) {
+            target.setMode(mode);
+        }
+        plugin.getArenaManager().joinArena(player, target);
+    }
+
+    private boolean canUseArenaForMode(Arena arena, Arena.ArenaMode requestedMode) {
+        if (arena == null || requestedMode == null) {
+            return false;
+        }
+
+        if (!plugin.getConfig().getBoolean("join-gui.allow-multi-mode-arenas", true)) {
+            return arena.getMode() == requestedMode;
+        }
+
+        if (arena.getState() == Arena.GameState.WAITING && arena.getPlayers().isEmpty()) {
+            return true;
+        }
+
+        return arena.getMode() == requestedMode;
     }
 }

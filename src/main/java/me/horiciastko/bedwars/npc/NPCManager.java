@@ -152,6 +152,7 @@ public class NPCManager {
                         SerializationUtils.locationToString(location));
                 if (id > 0) {
                     standaloneNpcIds.put(npc, id);
+                    attachStandaloneMetadata(npc, id, location, type);
                 }
             }
         }
@@ -174,10 +175,12 @@ public class NPCManager {
             }
         }
 
-        location.getWorld().getNearbyEntities(location, 0.35, 1.5, 0.35).forEach(entity -> {
+        // Hologram lines can be several blocks above the NPC, so use a taller Y range.
+        location.getWorld().getNearbyEntities(location, 1.25, 6.0, 1.25).forEach(entity -> {
             try {
                 if (entity.getScoreboardTags().contains("bw_npc")
-                        || entity.getScoreboardTags().contains("bw_npc_hologram")) {
+                        || entity.getScoreboardTags().contains("bw_npc_hologram")
+                        || entity.getScoreboardTags().contains("bw_hologram")) {
                     entity.remove();
                 }
             } catch (NoSuchMethodError ignored) {
@@ -187,6 +190,8 @@ public class NPCManager {
                 }
             }
         });
+
+        removeCitizensDuplicates(standaloneKey, type, null);
     }
 
     private String getStandaloneKey(Location location, String type) {
@@ -205,8 +210,140 @@ public class NPCManager {
         BedWarsNPC npc = createStandaloneNPC(location, type, false);
         if (npc != null) {
             standaloneNpcIds.put(npc, id);
+            attachStandaloneMetadata(npc, id, location, type);
         }
         return npc;
+    }
+
+    private void attachStandaloneMetadata(BedWarsNPC npc, int id, Location location, String type) {
+        if (!plugin.getSupportManager().isCitizensEnabled() || !(npc instanceof CitizensNPCImpl)) {
+            return;
+        }
+        try {
+            CitizensNPCImpl impl = (CitizensNPCImpl) npc;
+            int citizensId = impl.getCitizensNpcId();
+            if (citizensId < 0) {
+                return;
+            }
+            net.citizensnpcs.api.npc.NPC citizensNpc = net.citizensnpcs.api.CitizensAPI.getNPCRegistry().getById(citizensId);
+            if (citizensNpc == null) {
+                return;
+            }
+            citizensNpc.data().set("bw_npc", true);
+            citizensNpc.data().set("bw_npc_type", type);
+            citizensNpc.data().set("bw_standalone_id", id);
+            citizensNpc.data().set("bw_standalone_key", getStandaloneKey(location, type));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void removeCitizensDuplicates(String standaloneKey, String type, Integer standaloneId) {
+        if (!plugin.getSupportManager().isCitizensEnabled() || standaloneKey == null || type == null) {
+            return;
+        }
+
+        try {
+            java.util.List<net.citizensnpcs.api.npc.NPC> toDestroy = new java.util.ArrayList<>();
+
+            for (net.citizensnpcs.api.npc.NPC citizensNpc : net.citizensnpcs.api.CitizensAPI.getNPCRegistry()) {
+                if (citizensNpc == null) {
+                    continue;
+                }
+
+                boolean isBwNpc = false;
+                try {
+                    isBwNpc = citizensNpc.data().get("bw_npc", false);
+                } catch (Exception ignored) {
+                }
+                if (!isBwNpc) {
+                    continue;
+                }
+
+                String npcType = null;
+                try {
+                    Object rawType = citizensNpc.data().get("bw_npc_type");
+                    if (rawType instanceof String) {
+                        npcType = (String) rawType;
+                    }
+                } catch (Exception ignored) {
+                }
+                if (npcType == null || npcType.isEmpty()) {
+                    npcType = type;
+                }
+
+                Integer npcStandaloneId = null;
+                try {
+                    npcStandaloneId = citizensNpc.data().get("bw_standalone_id", -1);
+                } catch (Exception ignored) {
+                }
+
+                String npcStandaloneKey = null;
+                try {
+                    Object rawKey = citizensNpc.data().get("bw_standalone_key");
+                    if (rawKey instanceof String) {
+                        npcStandaloneKey = (String) rawKey;
+                    }
+                } catch (Exception ignored) {
+                }
+
+                if (npcStandaloneKey == null || npcStandaloneKey.isEmpty()) {
+                    org.bukkit.Location sourceLoc = null;
+                    if (citizensNpc.getEntity() != null) {
+                        sourceLoc = citizensNpc.getEntity().getLocation();
+                    }
+                    if (sourceLoc == null) {
+                        sourceLoc = citizensNpc.getStoredLocation();
+                    }
+                    npcStandaloneKey = getStandaloneKey(sourceLoc, npcType);
+                }
+
+                boolean sameType = type.equalsIgnoreCase(npcType);
+                boolean keyMatch = sameType && standaloneKey.equals(npcStandaloneKey);
+                boolean idMatch = standaloneId != null && npcStandaloneId != null && npcStandaloneId.intValue() == standaloneId.intValue();
+                if (!keyMatch && !idMatch) {
+                    continue;
+                }
+
+                org.bukkit.Location cleanupLoc = null;
+                if (citizensNpc.getEntity() != null) {
+                    try {
+                        java.util.UUID entityUuid = citizensNpc.getEntity().getUniqueId();
+                        unregisterEntity(entityUuid);
+                        cleanupLoc = citizensNpc.getEntity().getLocation();
+                    } catch (Exception ignored) {
+                    }
+                }
+                if (cleanupLoc == null) {
+                    cleanupLoc = citizensNpc.getStoredLocation();
+                }
+
+                if (cleanupLoc != null && cleanupLoc.getWorld() != null) {
+                    org.bukkit.Location finalCleanupLoc = cleanupLoc;
+                    cleanupLoc.getWorld().getNearbyEntities(finalCleanupLoc, 1.5, 6.0, 1.5).forEach(nearby -> {
+                        if (nearby instanceof org.bukkit.entity.ArmorStand) {
+                            try {
+                                java.util.Set<String> tags = nearby.getScoreboardTags();
+                                if (tags.contains("bw_hologram") || tags.contains("bw_npc_hologram")) {
+                                    nearby.remove();
+                                }
+                            } catch (NoSuchMethodError ignored) {
+                            }
+                        }
+                    });
+                }
+
+                toDestroy.add(citizensNpc);
+            }
+
+            for (net.citizensnpcs.api.npc.NPC npc : toDestroy) {
+                try {
+                    npc.destroy();
+                } catch (Exception ignored) {
+                }
+            }
+        } catch (Exception e) {
+            plugin.getLogger().warning("Failed to remove Citizens NPC duplicates: " + e.getMessage());
+        }
     }
 
     public void removeNPCs(Arena arena) {
@@ -321,6 +458,7 @@ public class NPCManager {
                 Location loc = SerializationUtils.stringToLocation(record.getLocation());
                 if (loc != null && loc.getWorld() != null) {
                     removeStandaloneDuplicates(loc, record.getType());
+                    removeCitizensDuplicates(getStandaloneKey(loc, record.getType()), record.getType(), id);
                 }
                 plugin.getDatabaseManager().deleteStandaloneNPC(id);
                 removed = true;

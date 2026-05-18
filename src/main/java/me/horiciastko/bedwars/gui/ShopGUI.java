@@ -493,24 +493,32 @@ public class ShopGUI extends BaseGUI {
             ConfigurationSection shopConfig) {
         int[] itemSlots = { 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 37, 38, 39, 40, 41, 42, 43 };
         Map<Integer, String[]> custom = shopManager.getPlayerQuickBuy(player);
+        ConfigurationSection defaults = shopConfig.getConfigurationSection("sections.quick_buy.items");
 
         for (int slot : itemSlots) {
-            if (!custom.containsKey(slot) || custom.get(slot)[0].equalsIgnoreCase("EMPTY")) {
-                boolean hasDefault = false;
-                ConfigurationSection defaults = shopConfig.getConfigurationSection("sections.quick_buy.items");
-                if (defaults != null) {
-                    for (String key : defaults.getKeys(false)) {
-                        if (defaults.getInt(key + ".slot") == slot) {
-                            hasDefault = true;
-                            break;
-                        }
+            if (custom.containsKey(slot)) {
+                String[] customInfo = custom.get(slot);
+                if (customInfo != null && customInfo.length > 0 && customInfo[0] != null
+                        && customInfo[0].equalsIgnoreCase("EMPTY")) {
+                    return slot;
+                }
+                continue;
+            }
+
+            boolean hasDefault = false;
+            if (defaults != null) {
+                for (String key : defaults.getKeys(false)) {
+                    if (defaults.getInt(key + ".slot") == slot) {
+                        hasDefault = true;
+                        break;
                     }
                 }
-                if (!hasDefault)
-                    return slot;
+            }
+            if (!hasDefault) {
+                return slot;
             }
         }
-        return itemSlots[0];
+        return null;
     }
 
     private void processPurchase(Player player, ConfigurationSection itemData) {

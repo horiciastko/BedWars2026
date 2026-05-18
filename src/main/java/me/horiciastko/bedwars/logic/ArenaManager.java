@@ -574,6 +574,7 @@ public class ArenaManager {
         Arena arena = playerArenaCache.remove(player);
         if (arena != null) {
             setLastArena(player.getUniqueId(), arena.getName());
+            plugin.getGameManager().resetPlayerPermanentPurchases(player.getUniqueId());
             arena.getPlayers().remove(player);
             plugin.getGameManager().checkLobbyLogistics(arena);
 
