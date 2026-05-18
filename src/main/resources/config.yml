@@ -40,7 +40,7 @@ database:
 server:
   ip: "play.yourserver.net"
   id: "1"
-  version: "1.1.1"
+  version: "1.1.3"
 
 # These appear above team beds to show their status.
 # Hologram text is defined in Languages/*/messages.yml (hologram-team-line1, hologram-team-line2, hologram-eliminated-line1)
@@ -66,6 +66,8 @@ game:
   # Explosion settings
   # Fine-tune the "BedWars feel" of explosions.
   pvp-cooldown: true # Set to true to ENABLE 1.9+ cooldowns, false for 1.8 spam-clicking
+  # Random/fair team assignment tie-breaker. If OFF, team fill uses deterministic order.
+  random-team-assignment: true
   tnt:
     jump-power: 2.5
     damage-enabled: false
@@ -116,6 +118,9 @@ world-backup:
 # %date%, %event_name%, %event_time%, %teams_status%, %server_ip% are supported.
 scoreboard:
   date-format: "dd/MM/yy"
+  # Disable BedWars sidebar scoreboard in selected worlds (exact world names).
+  # In-game arenas and arena edit mode always keep the BedWars scoreboard active.
+  disabled-worlds: []
   
   # Symbols used in the scoreboard (Premium look)
   symbols:
@@ -152,6 +157,9 @@ groups:
 # Display names and lore are defined in Languages/*/messages.yml
 join-gui:
   rows: 3
+  # If enabled, an empty WAITING arena can be reused by any mode selected in Join GUI.
+  # The arena mode is set at runtime when the first player joins that mode.
+  allow-multi-mode-arenas: true
   modes:
     solo:
       players-per-team: 1
