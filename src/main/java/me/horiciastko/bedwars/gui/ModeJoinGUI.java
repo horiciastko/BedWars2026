@@ -36,41 +36,41 @@ public class ModeJoinGUI extends BaseGUI {
                 .count();
 
         inventory.setItem(11, new ItemBuilder(XMaterial.RED_BED)
-                .setName("&aBedwars (" + readableMode(mode) + ")")
+                .setName("§aBedwars (" + readableMode(mode) + ")")
                 .setLore(
-                        "&7Play Bedwars " + readableMode(mode),
+                        "§7Play Bedwars " + readableMode(mode),
                         " ",
-                        "&7Online: &f" + online,
+                        "§7Online: §f" + online,
                         " ",
-                        "&eClick to play!")
+                        "§eClick to play!")
                 .build());
 
         inventory.setItem(13, new ItemBuilder(XMaterial.OAK_SIGN)
-                .setName("&aMap Selector (" + readableMode(mode) + ")")
+                .setName("§aMap Selector (" + readableMode(mode) + ")")
                 .setLore(
-                        "&7Pick which map you want to play",
-                        "&7from the available games",
+                        "§7Pick which map you want to play",
+                        "§7from the available games",
                         " ",
-                        "&eClick to play!")
+                        "§eClick to play!")
                 .build());
 
         boolean canRejoin = player.hasPermission("bedwars.command.rejoin")
                 && plugin.getArenaManager().getLastArena(player.getUniqueId()) != null;
         inventory.setItem(15, new ItemBuilder(canRejoin ? XMaterial.ENDER_PEARL : XMaterial.GRAY_DYE)
-                .setName(canRejoin ? "&cClick here to rejoin!" : "&7No game to rejoin")
+                .setName(canRejoin ? "§cClick here to rejoin!" : "§7No game to rejoin")
                 .setLore(canRejoin
                         ? java.util.Arrays.asList(
-                                "&7Click here to rejoin your game",
-                                "&7if you have been disconnected",
-                                "&7from it.")
+                                "§7Click here to rejoin your game",
+                                "§7if you have been disconnected",
+                                "§7from it.")
                         : java.util.Arrays.asList(
-                                "&7You do not have an active",
-                                "&7match to rejoin."))
+                                "§7You do not have an active",
+                                "§7match to rejoin."))
                 .build());
 
         inventory.setItem(22, new ItemBuilder(XMaterial.BARRIER)
-                .setName("&cClose")
-                .setLore("&7Return to lobby view")
+                .setName("§cClose")
+                .setLore("§7Return to lobby view")
                 .build());
     }
 
