@@ -96,13 +96,13 @@ public class ArenaSelectorGUI extends BaseGUI {
 
         if (filterMode != null) {
             inventory.setItem(23, new ItemBuilder(com.cryptomorin.xseries.XMaterial.FEATHER)
-                    .setName("§aRandom Join")
-                    .setLore("§7Join random maps", "", "§eClick to play!")
+                    .setName("&aRandom Join")
+                    .setLore("&7Join random maps", "", "&eClick to play!")
                     .build());
 
             inventory.setItem(25, new ItemBuilder(com.cryptomorin.xseries.XMaterial.FIREWORK_ROCKET)
-                    .setName("§fGo Back")
-                    .setLore("§7Back to " + ModeJoinGUI.readableMode(filterMode) + " menu")
+                    .setName("&fGo Back")
+                    .setLore("&7Back to " + ModeJoinGUI.readableMode(filterMode) + " menu")
                     .build());
         }
     }
@@ -158,15 +158,15 @@ public class ArenaSelectorGUI extends BaseGUI {
             .count());
 
         return new ItemBuilder(com.cryptomorin.xseries.XMaterial.MAP)
-            .setName("§a" + arena.getName())
+            .setName("&a" + arena.getName())
             .setLore(
-            "§f" + modeLine,
+            "&f" + modeLine,
             "",
-            "§7Available maps: §a" + availableMaps,
-            "§7Status: §f" + stateName,
-            "§7Current Player: §f" + arena.getPlayers().size() + "/" + arena.getMaxPlayers(),
+            "&7Available maps: &a" + availableMaps,
+            "&7Status: &f" + stateName,
+            "&7Current Player: &f" + arena.getPlayers().size() + "/" + arena.getMaxPlayers(),
             "",
-            "§eClick to Join")
+            "&eClick to Join")
                 .build();
     }
 

@@ -1,5 +1,6 @@
 package me.horiciastko.bedwars.utils;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
@@ -42,7 +43,7 @@ public class ItemBuilder {
             return this;
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(name);
+            meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name));
             item.setItemMeta(meta);
         }
         return this;
@@ -55,7 +56,11 @@ public class ItemBuilder {
     public ItemBuilder setLore(List<String> lore) {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setLore(lore);
+            List<String> colored = new ArrayList<>();
+            for (String line : lore) {
+                colored.add(line != null ? ChatColor.translateAlternateColorCodes('&', line) : null);
+            }
+            meta.setLore(colored);
             item.setItemMeta(meta);
         }
         return this;
@@ -67,7 +72,7 @@ public class ItemBuilder {
             List<String> lore = meta.hasLore() ? meta.getLore() : new ArrayList<>();
             if (lore == null)
                 lore = new ArrayList<>();
-            lore.add(line);
+            lore.add(line != null ? ChatColor.translateAlternateColorCodes('&', line) : null);
             meta.setLore(lore);
             item.setItemMeta(meta);
         }
