@@ -103,11 +103,16 @@ public class Arena {
     private int emeraldCooldown = 0;
     private boolean soloTest = false;
     private final java.util.Set<Location> placedBlocks = new java.util.HashSet<>();
+    private final java.util.List<org.bukkit.block.BlockState> initialBedStates = new java.util.ArrayList<>();
 
     private final List<Location> joinSigns = new ArrayList<>();
 
     public enum GameState {
         WAITING, STARTING, IN_GAME, ENDING
+    }
+
+    public java.util.List<org.bukkit.block.BlockState> getInitialBedStates() {
+        return initialBedStates;
     }
 
     public void reset() {
@@ -123,6 +128,7 @@ public class Arena {
         soloTest = false;
         resetting = false;
         placedBlocks.clear();
+        initialBedStates.clear();
         players.clear();
 
         for (Team team : teams) {

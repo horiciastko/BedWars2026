@@ -1320,7 +1320,11 @@ public class GameListener implements Listener {
         Player player = (Player) event.getEntity();
 
         Arena arena = BedWars.getInstance().getArenaManager().getPlayerArena(player);
-        if (arena == null || arena.getState() != Arena.GameState.IN_GAME) {
+        if (arena == null) {
+            return;
+        }
+
+        if (arena.getState() != Arena.GameState.IN_GAME) {
             event.setCancelled(true);
             return;
         }

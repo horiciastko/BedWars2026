@@ -587,6 +587,7 @@ public class ArenaManager {
 
             player.setGameMode(org.bukkit.GameMode.SURVIVAL);
             player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
             player.getEnderChest().clear();
             for (org.bukkit.potion.PotionEffect effect : player.getActivePotionEffects()) {
                 player.removePotionEffect(effect.getType());
@@ -678,6 +679,7 @@ public class ArenaManager {
             plugin.getGameManager().applyPvpSettings(player, arena);
 
             player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
             org.bukkit.inventory.ItemStack leaveItem = com.cryptomorin.xseries.XMaterial.RED_BED.parseItem();
             if (leaveItem == null)
                 leaveItem = new org.bukkit.inventory.ItemStack(org.bukkit.Material.BARRIER);

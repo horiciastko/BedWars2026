@@ -296,6 +296,24 @@ public class GameManager {
 
         assignTeams(arena);
 
+        arena.getInitialBedStates().clear();
+        for (Team team : arena.getTeams()) {
+            if (team.getBedLocation() != null) {
+                org.bukkit.block.Block b = team.getBedLocation().getBlock();
+                for (int x = -1; x <= 1; x++) {
+                    for (int y = -1; y <= 1; y++) {
+                        for (int z = -1; z <= 1; z++) {
+                            org.bukkit.block.Block rel = b.getRelative(x, y, z);
+                            String name = rel.getType().name();
+                            if (name.endsWith("_BED") || name.equals("BED_BLOCK")) {
+                                arena.getInitialBedStates().add(rel.getState());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         for (Team team : arena.getTeams()) {
             if (team.getMembers().isEmpty()) {
                 team.setBedBroken(true);
@@ -603,6 +621,14 @@ public class GameManager {
                         }
                     } catch (Exception ignored) {}
                 }
+                // Manually restore bed blocks as a fallback
+                for (org.bukkit.block.BlockState state : arena.getInitialBedStates()) {
+                    try {
+                        if (state.getLocation().getWorld() != null) {
+                            state.update(true, false);
+                        }
+                    } catch (Exception ignored) {}
+                }
             }
         }
     }
@@ -640,6 +666,7 @@ public class GameManager {
             player.setGameMode(GameMode.SURVIVAL);
             clearAllPotionEffects(player);
             player.getInventory().clear();
+            player.getInventory().setArmorContents(null);
             player.setItemOnCursor(new ItemStack(Material.AIR));
             player.closeInventory();
 
@@ -708,6 +735,7 @@ public class GameManager {
         }
 
         player.getInventory().clear();
+        player.getInventory().setArmorContents(null);
         player.setItemOnCursor(new ItemStack(Material.AIR));
         player.closeInventory();
         clearAllPotionEffects(player);
@@ -2161,6 +2189,14 @@ public class GameManager {
     }
 
     public void applyPvpSettings(Player player, Arena arena) {
+        try {
+            applyPvpSettingsInner(player, arena);
+        } catch (Throwable ignored) {
+            // Attributes don't exist on older versions (e.g. 1.8.8), safe to ignore
+        }
+    }
+
+    private void applyPvpSettingsInner(Player player, Arena arena) {
         org.bukkit.attribute.AttributeInstance attackSpeed = player
                 .getAttribute(org.bukkit.attribute.Attribute.GENERIC_ATTACK_SPEED);
         if (attackSpeed == null)
