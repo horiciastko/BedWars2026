@@ -1216,7 +1216,7 @@ public class GameManager {
                     org.bukkit.block.Block block = world.getBlockAt(x, y, z);
                     if (block.getType() == org.bukkit.Material.AIR 
                         || block.getType() == org.bukkit.Material.BEDROCK
-                        || block.getType().name().endsWith("_BED")) {
+                        || block.getType().name().endsWith("_BED") || block.getType().name().equals("BED_BLOCK")) {
                         continue;
                     }
 

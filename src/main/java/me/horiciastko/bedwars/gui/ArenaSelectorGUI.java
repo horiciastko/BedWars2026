@@ -23,7 +23,7 @@ public class ArenaSelectorGUI extends BaseGUI {
     }
 
     public ArenaSelectorGUI(Arena.ArenaMode mode) {
-        super("&8Bed Wars " + (mode != null ? ModeJoinGUI.readableMode(mode) : "Maps"), 3);
+        super("&8Bed Wars " + (mode != null ? ModeJoinGUI.readableMode(mode) : "Maps"), 6);
         this.filterMode = mode;
     }
 
@@ -76,7 +76,10 @@ public class ArenaSelectorGUI extends BaseGUI {
             })
             .collect(Collectors.toList());
 
-        int[] mapSlots = { 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25 };
+        int[] mapSlots = { 10, 11, 12, 13, 14, 15, 16, 
+                           19, 20, 21, 22, 23, 24, 25, 
+                           28, 29, 30, 31, 32, 33, 34, 
+                           37, 38, 39, 40, 41, 42, 43 };
         int idx = 0;
         for (Arena arena : arenas) {
             if (idx >= mapSlots.length) {
@@ -95,12 +98,12 @@ public class ArenaSelectorGUI extends BaseGUI {
         }
 
         if (filterMode != null) {
-            inventory.setItem(23, new ItemBuilder(com.cryptomorin.xseries.XMaterial.FEATHER)
+            inventory.setItem(48, new ItemBuilder(com.cryptomorin.xseries.XMaterial.FEATHER)
                     .setName("&aRandom Join")
                     .setLore("&7Join random maps", "", "&eClick to play!")
                     .build());
 
-            inventory.setItem(25, new ItemBuilder(com.cryptomorin.xseries.XMaterial.FIREWORK_ROCKET)
+            inventory.setItem(50, new ItemBuilder(com.cryptomorin.xseries.XMaterial.FIREWORK_ROCKET)
                     .setName("&fGo Back")
                     .setLore("&7Back to " + ModeJoinGUI.readableMode(filterMode) + " menu")
                     .build());
@@ -175,12 +178,12 @@ public class ArenaSelectorGUI extends BaseGUI {
         if (item == null || item.getType().name().contains("GLASS_PANE"))
             return;
 
-        if (slot == 23 && filterMode != null) {
+        if (slot == 48 && filterMode != null) {
             joinQuickFromSelector(player);
             return;
         }
 
-        if (slot == 25 && filterMode != null) {
+        if (slot == 50 && filterMode != null) {
             new ModeJoinGUI(filterMode).open(player);
             return;
         }
@@ -208,16 +211,24 @@ public class ArenaSelectorGUI extends BaseGUI {
                 .filter(a -> a.getState() == Arena.GameState.WAITING || a.getState() == Arena.GameState.STARTING)
                 .filter(a -> a.getPlayers().size() < a.getMaxPlayers())
                 .filter(a -> canUseArenaForMode(a, filterMode))
-                .sorted((a1, a2) -> Integer.compare(a2.getPlayers().size(), a1.getPlayers().size()))
                 .collect(Collectors.toList());
-
         if (available.isEmpty()) {
             player.sendMessage(BedWars.getInstance().getLanguageManager().getMessage(player.getUniqueId(), "join-no-arenas-mode")
                     .replace("%mode%", filterMode.getDisplayName()));
             return;
         }
 
-        Arena target = available.get(0);
+        // Handle Random Join by picking a random map from the empty ones if possible, otherwise randomly from available.
+        List<Arena> emptyAvailable = available.stream()
+                .filter(a -> a.getPlayers().isEmpty())
+                .collect(Collectors.toList());
+        
+        Arena target;
+        if (!emptyAvailable.isEmpty()) {
+            target = emptyAvailable.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(emptyAvailable.size()));
+        } else {
+            target = available.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(available.size()));
+        }
         if (BedWars.getInstance().getConfig().getBoolean("join-gui.allow-multi-mode-arenas", true)
                 && target.getState() == Arena.GameState.WAITING && target.getPlayers().isEmpty()) {
             target.setMode(filterMode);

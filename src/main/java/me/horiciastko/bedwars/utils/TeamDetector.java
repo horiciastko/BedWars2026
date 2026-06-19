@@ -32,7 +32,8 @@ public class TeamDetector {
                 for (int z = min.getBlockZ(); z <= max.getBlockZ(); z++) {
                     Block block = min.getWorld().getBlockAt(x, y, z);
 
-                    if (block.getType().name().endsWith("_BED")) {
+                    String bName = block.getType().name();
+                    if (bName.endsWith("_BED") || bName.equals("BED_BLOCK")) {
                         boolean isFoot = false;
                         try {
                             Object data = block.getClass().getMethod("getBlockData").invoke(block);

@@ -121,7 +121,8 @@ public class GameListener implements Listener {
 
         Block block = event.getBlock();
 
-        if (block.getType().name().endsWith("_BED")) {
+        String blockName = block.getType().name();
+        if (blockName.endsWith("_BED") || blockName.equals("BED_BLOCK")) {
             handleBedBreak(event, player, arena);
             return;
         } else {
@@ -321,7 +322,8 @@ public class GameListener implements Listener {
                 org.bukkit.block.BlockFace.NORTH, org.bukkit.block.BlockFace.SOUTH,
                 org.bukkit.block.BlockFace.EAST, org.bukkit.block.BlockFace.WEST }) {
             Block adjacent = block.getRelative(face);
-            if (adjacent.getType().name().endsWith("_BED")) {
+            String adjName = adjacent.getType().name();
+            if (adjName.endsWith("_BED") || adjName.equals("BED_BLOCK")) {
                 adjacent.setType(Material.AIR);
             }
         }
@@ -879,7 +881,7 @@ public class GameListener implements Listener {
 
         // Prevent feeding iron ingots to bw_mob golems (repair)
         if (event.getRightClicked() instanceof org.bukkit.entity.IronGolem) {
-            if (event.getRightClicked().getScoreboardTags().contains("bw_mob")) {
+            if (hasScoreboardTag(event.getRightClicked(), "bw_mob")) {
                 ItemStack inHand = event.getPlayer().getInventory().getItemInMainHand();
                 if (inHand.getType() == Material.IRON_INGOT) {
                     event.setCancelled(true);
@@ -892,7 +894,7 @@ public class GameListener implements Listener {
             return;
         Villager villager = (Villager) event.getRightClicked();
 
-        if (!villager.getScoreboardTags().contains("bw_npc"))
+        if (!hasScoreboardTag(villager, "bw_npc"))
             return;
 
         event.setCancelled(true);
@@ -1305,8 +1307,8 @@ public class GameListener implements Listener {
     public void onEntityDamage(org.bukkit.event.entity.EntityDamageEvent event) {
         if (event.getEntity() instanceof org.bukkit.entity.Villager) {
             org.bukkit.entity.Villager villager = (org.bukkit.entity.Villager) event.getEntity();
-            if (villager.getScoreboardTags().contains("bw_npc") || villager.getScoreboardTags().contains("bw_npc_shop")
-                    || villager.getScoreboardTags().contains("bw_npc_upgrades")) {
+            if (hasScoreboardTag(villager, "bw_npc") || hasScoreboardTag(villager, "bw_npc_shop")
+                    || hasScoreboardTag(villager, "bw_npc_upgrades")) {
                 event.setCancelled(true);
                 return;
             }
@@ -1523,10 +1525,9 @@ public class GameListener implements Listener {
 
         if (event instanceof org.bukkit.event.entity.EntityDamageByEntityEvent) {
             org.bukkit.event.entity.EntityDamageByEntityEvent edbe = (org.bukkit.event.entity.EntityDamageByEntityEvent) event;
-            if (edbe.getDamager().getScoreboardTags().contains("bw_mob")) {
+            if (hasScoreboardTag(edbe.getDamager(), "bw_mob")) {
                 if (BedWars.getInstance().getConfig().getBoolean("game.prevent-own-mob-damage", true)) {
-                    String mobTeamTag = edbe.getDamager().getScoreboardTags().stream()
-                            .filter(t -> t.startsWith("team_")).findFirst().orElse(null);
+                    String mobTeamTag = getMobTeamTag(edbe.getDamager());
                     me.horiciastko.bedwars.models.Team playerTeam = BedWars.getInstance().getGameManager()
                             .getPlayerTeam(arena, player);
                     if (mobTeamTag != null && playerTeam != null && mobTeamTag.equals("team_" + playerTeam.getName())) {
@@ -1535,12 +1536,11 @@ public class GameListener implements Listener {
                 }
             }
 
-            if (edbe.getEntity().getScoreboardTags().contains("bw_mob")
+            if (hasScoreboardTag(edbe.getEntity(), "bw_mob")
                     && edbe.getDamager() instanceof Player) {
                 Player damager = (Player) edbe.getDamager();
                 Team damagerTeam = BedWars.getInstance().getGameManager().getPlayerTeam(arena, damager);
-                String mobTeamTag = edbe.getEntity().getScoreboardTags().stream()
-                        .filter(t -> t.startsWith("team_")).findFirst().orElse(null);
+                String mobTeamTag = getMobTeamTag(edbe.getEntity());
                 if (mobTeamTag != null && damagerTeam != null && mobTeamTag.equals("team_" + damagerTeam.getName())) {
                     event.setCancelled(true);
                 }
@@ -1634,12 +1634,10 @@ public class GameListener implements Listener {
 
     @EventHandler
     public void onEntityTarget(org.bukkit.event.entity.EntityTargetLivingEntityEvent event) {
-        if (!event.getEntity().getScoreboardTags().contains("bw_mob"))
+        if (!hasScoreboardTag(event.getEntity(), "bw_mob"))
             return;
 
-        String teamTag = event.getEntity().getScoreboardTags().stream()
-                .filter(t -> t.startsWith("team_"))
-                .findFirst().orElse(null);
+        String teamTag = getMobTeamTag(event.getEntity());
 
         if (teamTag == null)
             return;
@@ -1676,10 +1674,8 @@ public class GameListener implements Listener {
                     }
                 }
             }
-        } else if (event.getTarget() != null && event.getTarget().getScoreboardTags().contains("bw_mob")) {
-            String targetTeamTag = event.getTarget().getScoreboardTags().stream()
-                    .filter(t -> t.startsWith("team_"))
-                    .findFirst().orElse(null);
+        } else if (event.getTarget() != null && hasScoreboardTag(event.getTarget(), "bw_mob")) {
+            String targetTeamTag = getMobTeamTag(event.getTarget());
             if (targetTeamTag != null && targetTeamTag.equalsIgnoreCase(teamTag)) {
                 event.setCancelled(true);
             }
@@ -1701,11 +1697,12 @@ public class GameListener implements Listener {
         }
 
         if (event.getEntity() instanceof EnderDragon
-                && event.getEntity().getScoreboardTags().contains("bw_sudden_death")) {
+                && hasScoreboardTag(event.getEntity(), "bw_sudden_death")) {
             java.util.Iterator<Block> it = event.blockList().iterator();
             while (it.hasNext()) {
                 Block b = it.next();
-                if (b.getType().name().endsWith("_BED") || b.getType() == org.bukkit.Material.BEDROCK) {
+                String bName = b.getType().name();
+                if (bName.endsWith("_BED") || bName.equals("BED_BLOCK") || b.getType() == org.bukkit.Material.BEDROCK) {
                     it.remove();
                 }
             }
@@ -1720,7 +1717,8 @@ public class GameListener implements Listener {
                 continue;
             }
 
-            if (b.getType().name().contains("GLASS") || b.getType().name().endsWith("_BED")) {
+            String bName = b.getType().name();
+            if (bName.contains("GLASS") || bName.endsWith("_BED") || bName.equals("BED_BLOCK")) {
                 it.remove();
             }
         }
@@ -1729,7 +1727,7 @@ public class GameListener implements Listener {
     @EventHandler
     public void onDragonExplode(EntityExplodeEvent event) {
         if (event.getEntity() instanceof EnderDragon || event.getEntityType() == EntityType.ENDER_DRAGON) {
-            if (event.getEntity().getScoreboardTags().contains("bw_sudden_death")) {
+            if (hasScoreboardTag(event.getEntity(), "bw_sudden_death")) {
                 return;
             }
         }
@@ -1738,8 +1736,9 @@ public class GameListener implements Listener {
     @EventHandler
     public void onDragonBlockChange(EntityChangeBlockEvent event) {
         if (event.getEntity() instanceof EnderDragon || event.getEntityType() == EntityType.ENDER_DRAGON) {
-            if (event.getEntity().getScoreboardTags().contains("bw_sudden_death")) {
-                if (event.getBlock().getType().name().endsWith("_BED")
+            if (hasScoreboardTag(event.getEntity(), "bw_sudden_death")) {
+                String bName = event.getBlock().getType().name();
+                if (bName.endsWith("_BED") || bName.equals("BED_BLOCK")
                         || event.getBlock().getType() == org.bukkit.Material.BEDROCK) {
                     event.setCancelled(true);
                 }
@@ -1874,7 +1873,7 @@ public class GameListener implements Listener {
     public void onEntityDeath(EntityDeathEvent event) {
         if (event.getEntityType() == org.bukkit.entity.EntityType.IRON_GOLEM
                 || event.getEntityType() == org.bukkit.entity.EntityType.SILVERFISH) {
-            if (event.getEntity().getScoreboardTags().contains("bw_mob")) {
+            if (hasScoreboardTag(event.getEntity(), "bw_mob")) {
                 event.getDrops().clear();
                 event.setDroppedExp(0);
             }
@@ -1933,6 +1932,23 @@ public class GameListener implements Listener {
             Location from = event.getFrom();
             event.setTo(new Location(from.getWorld(), from.getX(), Math.max(minY, Math.min(maxY, from.getY())),
                     from.getZ(), from.getYaw(), from.getPitch()));
+        }
+    }
+
+    private boolean hasScoreboardTag(org.bukkit.entity.Entity entity, String tag) {
+        try {
+            return entity.getScoreboardTags().contains(tag);
+        } catch (NoSuchMethodError e) {
+            return false;
+        }
+    }
+
+    private String getMobTeamTag(org.bukkit.entity.Entity entity) {
+        try {
+            return entity.getScoreboardTags().stream()
+                    .filter(t -> t.startsWith("team_")).findFirst().orElse(null);
+        } catch (NoSuchMethodError e) {
+            return null;
         }
     }
 }

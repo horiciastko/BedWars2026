@@ -66,7 +66,7 @@ public class ArenaSettingsGUI extends BaseGUI {
                 boolean boundsSet = arena.getPos1() != null && arena.getPos2() != null;
                 boolean lobbySet = arena.getLobbyLocation() != null;
                 boolean step2Done = boundsSet && lobbySet;
-                inventory.setItem(11, new ItemBuilder(step2Done ? Material.EMERALD_ORE : Material.STONE)
+                inventory.setItem(11, new ItemBuilder(step2Done ? com.cryptomorin.xseries.XMaterial.EMERALD_ORE : com.cryptomorin.xseries.XMaterial.STONE)
                                 .setName(step2Done ? "§a§l✓ §fArena Bounds" : "§6§l⚠ §fArena Bounds")
                                 .setLore(
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━",
@@ -104,7 +104,7 @@ public class ArenaSettingsGUI extends BaseGUI {
                 int diamondCount = arena.getDiamondGenerators().size();
                 int emeraldCount = arena.getEmeraldGenerators().size();
                 boolean gensSet = diamondCount > 0 || emeraldCount > 0;
-                inventory.setItem(13, new ItemBuilder(Material.DIAMOND)
+                inventory.setItem(13, new ItemBuilder(com.cryptomorin.xseries.XMaterial.DIAMOND)
                                 .setName(gensSet ? "§b§l✓ §fGlobal Generators" : "§6§l⚠ §fGlobal Generators")
                                 .setLore(
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━",
@@ -118,7 +118,7 @@ public class ArenaSettingsGUI extends BaseGUI {
                                 .build());
 
                 long shopsSet = arena.getTeams().stream().filter(t -> t.getShopLocation() != null).count();
-                inventory.setItem(19, new ItemBuilder(Material.VILLAGER_SPAWN_EGG)
+                inventory.setItem(19, new ItemBuilder(com.cryptomorin.xseries.XMaterial.VILLAGER_SPAWN_EGG)
                                 .setName("§a§lShop NPCs")
                                 .setLore(
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━",
@@ -129,7 +129,7 @@ public class ArenaSettingsGUI extends BaseGUI {
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━")
                                 .build());
 
-                inventory.setItem(21, new ItemBuilder(Material.COMPARATOR)
+                inventory.setItem(21, new ItemBuilder(com.cryptomorin.xseries.XMaterial.COMPARATOR)
                                 .setName("§6§l⚙ §fGame Settings")
                                 .setLore(
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━",
@@ -144,7 +144,7 @@ public class ArenaSettingsGUI extends BaseGUI {
 
                 boolean multiModeEnabled = BedWars.getInstance().getConfig()
                                 .getBoolean("join-gui.allow-multi-mode-arenas", true);
-                inventory.setItem(22, new ItemBuilder(multiModeEnabled ? Material.LIME_CONCRETE : Material.GRAY_CONCRETE)
+                inventory.setItem(22, new ItemBuilder(multiModeEnabled ? com.cryptomorin.xseries.XMaterial.LIME_CONCRETE : com.cryptomorin.xseries.XMaterial.GRAY_CONCRETE)
                                 .setName("§b§lJoin Mode Reuse")
                                 .setLore(
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━",
@@ -174,7 +174,7 @@ public class ArenaSettingsGUI extends BaseGUI {
                                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━")
                                                 .build());
 
-                inventory.setItem(25, new ItemBuilder(Material.STICK)
+                inventory.setItem(25, new ItemBuilder(com.cryptomorin.xseries.XMaterial.STICK)
                                 .setName("§e§l⚡ §fSelection Wand")
                                 .setLore(
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━",
@@ -188,7 +188,7 @@ public class ArenaSettingsGUI extends BaseGUI {
                                 .build());
 
                 boolean isReady = worldSet && step2Done && teamsReady;
-                inventory.setItem(31, new ItemBuilder(isReady ? Material.EMERALD_BLOCK : Material.COAL_BLOCK)
+                inventory.setItem(31, new ItemBuilder(isReady ? com.cryptomorin.xseries.XMaterial.EMERALD_BLOCK : com.cryptomorin.xseries.XMaterial.COAL_BLOCK)
                                 .setName(isReady ? "§a§l✓ §fFinalize Arena" : "§c§l✗ §fNot Ready")
                                 .setLore(
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━",
@@ -202,7 +202,7 @@ public class ArenaSettingsGUI extends BaseGUI {
                                                 "§8━━━━━━━━━━━━━━━━━━━━━━━")
                                 .build());
 
-                inventory.setItem(33, new ItemBuilder(Material.BARRIER)
+                inventory.setItem(33, new ItemBuilder(com.cryptomorin.xseries.XMaterial.BARRIER)
                                 .setName("§c§l✖ §fExit Setup")
                                 .setLore(
                                                 "§7Close without saving new changes",
