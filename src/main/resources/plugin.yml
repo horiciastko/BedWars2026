@@ -2,49 +2,106 @@ name: BedWars
 version: ${project.version}
 main: me.horiciastko.bedwars.BedWars
 authors: [Horiciastko]
-api-version: '1.13'
-softdepend: [PlaceholderAPI, Citizens, Vault]
+description: Complete BedWars game plugin - Paper API Edition
+api-version: '1.20'
+paper-api: true
+
+softdepend:
+  - PlaceholderAPI
+  - Citizens
+  - Vault
 
 commands:
   bw:
     description: Main BedWars command
     aliases: [bedwars]
     usage: /bw <subcommand>
+    permission: bedwars.use
+    permission-message: "&cYou don't have permission to use this command!"
+
   lobby:
     description: Return to the BedWars lobby (standalone alias for /bw lobby)
     usage: /lobby
+    permission: bedwars.use
+    permission-message: "&cYou don't have permission to use this command!"
+
   party:
     description: Manage your BedWars party (standalone alias for /bw party)
     usage: /party <invite|accept|leave|kick|list|disband>
+    permission: bedwars.use
+    permission-message: "&cYou don't have permission to use this command!"
+
   join:
     description: Join a BedWars arena (standalone alias for /bw join)
     usage: /join [arena/group]
+    permission: bedwars.use
+    permission-message: "&cYou don't have permission to use this command!"
+
   leave:
     description: Leave the current BedWars arena (standalone alias for /bw leave)
     usage: /leave
+    permission: bedwars.use
+    permission-message: "&cYou don't have permission to use this command!"
+
   rejoin:
     description: Rejoin your recent BedWars arena (standalone alias for /bw rejoin)
     usage: /rejoin
+    permission: bedwars.command.rejoin
+    permission-message: "&cYou don't have permission to use this command!"
+
   stats:
     description: View BedWars stats (standalone alias for /bw stats)
     usage: /stats [player]
+    permission: bedwars.use
+    permission-message: "&cYou don't have permission to use this command!"
+
+  shop:
+    description: Open the BedWars shop
+    usage: /shop
+    permission: bedwars.use
+    permission-message: "&cYou don't have permission to use this command!"
+
+  upgrade:
+    description: Open the team upgrades menu
+    usage: /upgrade
+    permission: bedwars.use
+    permission-message: "&cYou don't have permission to use this command!"
 
 permissions:
+  bedwars.*:
+    description: Grants all BedWars permissions
+    children:
+      bedwars.use: true
+      bedwars.admin: true
+      bedwars.setup: true
+      bedwars.command.rejoin: true
+      bedwars.command.reload: true
+      bedwars.command.lang: true
+
   bedwars.use:
-    description: Allows the usage of basic BedWars commands like /bw join or /bw leave.
+    description: Allows the usage of basic BedWars commands like /bw join or /bw leave
     default: true
+
   bedwars.admin:
-    description: Full administrator access to all plugin features and commands.
+    description: Full administrator access to all plugin features and commands
     default: op
+    children:
+      bedwars.setup: true
+      bedwars.command.reload: true
+      bedwars.command.lang: true
+
   bedwars.setup:
-    description: Ability to create, edit, and manage BedWars arenas.
+    description: Ability to create, edit, and manage BedWars arenas
     default: op
+
   bedwars.command.rejoin:
-    description: Allows the player to rejoin a game they recently disconnected from.
+    description: Allows the player to rejoin a game they recently disconnected from
     default: true
+
   bedwars.command.reload:
-    description: Allows the player to reload the plugin configuration.
+    description: Allows the player to reload the plugin configuration
     default: op
+
   bedwars.command.lang:
-    description: Allows administrators to change the global language of the plugin.
+    description: Allows administrators to change the global language of the plugin
     default: op

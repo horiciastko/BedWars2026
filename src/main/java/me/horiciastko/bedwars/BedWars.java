@@ -22,13 +22,19 @@ import me.horiciastko.bedwars.npc.NPCManager;
 import me.horiciastko.bedwars.listeners.SignListener;
 import me.horiciastko.bedwars.listeners.CleanupListener;
 import me.horiciastko.bedwars.listeners.LobbyListener;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.time.Duration;
 import java.util.logging.Logger;
 
+/**
+ * BedWars Plugin - Paper API Version
+ * Migrated from Purpur API to Paper API
+ */
 @Getter
-@SuppressWarnings("deprecation")
 public class BedWars extends JavaPlugin {
 
     @Getter
@@ -51,32 +57,42 @@ public class BedWars extends JavaPlugin {
     @Getter
     private NPCManager npcManager;
 
+    /**
+     * Send title to player using Paper API (Adventure)
+     */
     public void sendTitle(Player player, String title, String subtitle, int fadeIn, int stay, int fadeOut) {
-        if (player == null)
-            return;
+        if (player == null) return;
+
         try {
-            player.sendTitle(title, subtitle, fadeIn, stay, fadeOut);
-        } catch (NoSuchMethodError e) {
-            try {
-                player.getClass().getMethod("sendTitle", String.class, String.class)
-                        .invoke(player, title, subtitle);
-            } catch (Exception ex) {
-                if (title != null && !title.isEmpty())
-                    player.sendMessage(title);
-                if (subtitle != null && !subtitle.isEmpty())
-                    player.sendMessage(subtitle);
-            }
+            Title titleComponent = Title.title(
+                    title != null ? Component.text(title) : Component.empty(),
+                    subtitle != null ? Component.text(subtitle) : Component.empty(),
+                    Title.Times.of(
+                            Duration.ofMillis(fadeIn * 50L),
+                            Duration.ofMillis(stay * 50L),
+                            Duration.ofMillis(fadeOut * 50L)
+                    )
+            );
+            player.showTitle(titleComponent);
+        } catch (Exception e) {
+            // Fallback to message if Paper API fails
+            if (title != null && !title.isEmpty())
+                player.sendMessage(Component.text(title));
+            if (subtitle != null && !subtitle.isEmpty())
+                player.sendMessage(Component.text(subtitle));
         }
     }
 
-
+    /**
+     * Send action bar to player using Paper API (Adventure)
+     */
     public void sendActionBar(Player player, String message) {
-        if (player == null || message == null)
-            return;
+        if (player == null || message == null) return;
+
         try {
-            com.cryptomorin.xseries.messages.ActionBar.sendActionBar(player, message);
+            player.sendActionBar(Component.text(message));
         } catch (Exception e) {
-            player.sendMessage(message);
+            player.sendMessage(Component.text(message));
         }
     }
 
@@ -90,6 +106,7 @@ public class BedWars extends JavaPlugin {
         me.horiciastko.bedwars.utils.ServerVersion version = me.horiciastko.bedwars.utils.ServerVersion.getCurrent();
         logger.info("Detected Server Version: " + org.bukkit.Bukkit.getBukkitVersion() + " (Mapped: "
                 + version.name() + ")");
+        logger.info("Running on Paper API - Enhanced performance and features enabled");
 
         this.configManager = new ConfigManager(this);
         this.soundManager = new SoundManager(this);
@@ -136,7 +153,7 @@ public class BedWars extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.SelectionWandListener(this),
                 this);
         getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.NPCListener(this), this);
-        
+
         if (supportManager.isCitizensEnabled()) {
             try {
                 getServer().getPluginManager().registerEvents(new me.horiciastko.bedwars.listeners.CitizensNPCListener(this), this);
@@ -147,6 +164,7 @@ public class BedWars extends JavaPlugin {
         }
 
         logger.info("Plugin enabled successfully! Version: " + getDescription().getVersion());
+        logger.info("Paper API Migration: All systems operational");
 
         me.horiciastko.bedwars.utils.UpdateChecker updateChecker = new me.horiciastko.bedwars.utils.UpdateChecker(this);
         getServer().getPluginManager().registerEvents(updateChecker, this);
